@@ -15,33 +15,47 @@
         const threeParamVSS = 108;
         const threeParamLSS = 109;
 
-        const unknownFun = 110;
+        const comment = 110;
 
-        const varr = 111;
-        const val = 112;
+        const unknownFun = 111;
+
+        const varr = 112;
+        const val = 113;
     }
 
-    class Parser_vars
+    class Lexer
     {
-        protected $token = 1;
-        protected $wasOP = false;
-        protected $buffer = [];
-        protected $lineCount = 0;
-        protected $instrCount = 0;
-        protected $filePointer = "text";
-        protected $xml = NULL;
-    }
-
-    class Parser extends Parser_vars
-    {
-
         // TODO: KVOLI DEBUGGERU UPRAVIM NA FILE OPEN, POTOM OPRAVIT NA STDIN!!!!!!!!!!!!!!!!!!!!!!!!!!§§
         public function set_up()
         {
             $this->filePointer = fopen($this->filePointer, 'r');
         }
 
-        public function get_line_break()
+        public function parse_args($argv)
+        {
+            $argc = count($argv);
+
+            if($argc == 1)
+            {
+                return;
+            }
+            else if($argc == 2)
+            {
+                if($argv[1] == "--help" or $argv[1] == "-h")
+                {
+                    print "IPPcode19 parser\n";
+                    print "Written by Tomáš Sasák for BUT FIT 2019.\n\n";
+                    print "Parser parses IPPcode19 language and translates it into XML representation.\n";
+                    print "Checks syntactic analysis and lexical analysis.\n";
+                    print "IPPcode19 is taken from STDIN.\n";
+                    exit(0);
+                }
+            }
+            fwrite(STDERR, "Error, unknown parameters!\n");
+            exit(10);
+        }
+
+        protected function get_line_break()
         {
             $this->buffer = fgets($this->filePointer);
             $this->lineCount++;
@@ -64,7 +78,7 @@
             }
         }
 
-        public function get_token()
+        protected function get_token()
         {
             if($this->token == Instructions::EOF)
             {
@@ -87,157 +101,9 @@
             }
         }
 
-        public function get_line_len()
+        protected function get_line_len()
         {
             return count($this->buffer);
-        }
-
-        public function generate_head()
-        {
-            $this->xml = new XMLWriter();
-    
-            $this->xml->openMemory();
-            $this->xml->setIndent(true);
-            $this->xml->startDocument("1.0","UTF-8");
-            $this->xml->startElement("program");
-            $this->xml->writeAttribute("language","IPPcode19");
-        }
-
-        public function generate_eof()
-        {
-            $this->xml->endDocument();
-            $result = $this->xml->outputMemory();
-            print $result;
-        }
-
-        protected function generate_instruction()
-        {
-            $this->xml->startElement("instruction");
-            $this->xml->writeAttribute("order", $this->instrCount);
-            $this->xml->writeAttribute("opcode", $this->token);
-        }
-
-        protected function generate_arg($number, $type)
-        {
-            $arg = "arg" . $number;
-
-            $this->xml->startElement($arg);
-            $this->xml->writeAttribute("type", $type);
-            $this->xml->text($this->token);
-
-            $this->xml->endElement();
-        }
-
-        protected function generate_symb($choice, $number)
-        {
-            if($choice == false)
-            {
-                fwrite(STDERR, "Error, expecting <symb> function parameter! Line: ");
-                fwrite(STDERR, $this->lineCount);
-                exit(23);                
-            }
-            else if($choice == Instructions::varr)
-            {
-                $this->generate_arg($number, "var");
-            }
-            else if($choice == Instructions::val)
-            {
-                // Split on two parts, int@25 = int, 25, string@lol = string, lol
-                $split = explode("@", $this->token, 2);
-                $this->token = $split[1];
-
-                $this->generate_arg($number, $split[0]);
-            }
-        }
-
-        public function check_head()
-        {
-            $this->get_token();
-
-            if((strcasecmp($this->token,".IPPcode19") != 0) or ($this->get_line_len() != 0))
-            {
-                fwrite(STDERR, "Error, expecting .IPPcode19 header! Line: ");
-                fwrite(STDERR, $this->lineCount);
-                fwrite(STDERR, "\n");
-                exit(21);
-            }
-        }
-
-        public function decode()
-        {
-            $this->get_token();
-            $this->token = strtoupper($this->token);
-
-            switch($this->token)
-            {
-                case "CREATEFRAME":
-                case "PUSHFRAME":
-                case "POPFRAME":
-                case "RETURN":
-                case "BREAK":
-                    return Instructions::zeroParams;
-                
-                case "DEFVAR":
-                case "POPS":
-                    return Instructions::oneParamV;
-
-                case "CALL":
-                case "LABEL":
-                case "JUMP":
-                    return Instructions::oneParamL;
-
-                case "PUSHS":
-                case "WRITE":
-                case "EXIT":
-                case "DPRINT":
-                    return Instructions::oneParamS;
-
-                case "MOVE":
-                case "INT2CHAR":
-                case "STRLEN":
-                case "TYPE":
-                    return Instructions::twoParamVS;
-                
-                case "READ":
-                    return Instructions::twoParamVT;
-                
-                case "ADD":
-                case "SUB":
-                case "MUL":
-                case "IDIV":
-                case "LG":
-                case "GT":
-                case "EQ":
-                case "AND":
-                case "OR":
-                case "NOT":
-                case "STRI2INT":
-                case "CONCAT":
-                case "GETCHAR":
-                case "SETCHAR":
-                    return Instructions::threeParamVSS;
-                
-                case "JUMPIFEQ":
-                case "JUMPIFNEQ":
-                    return Instructions::threeParamLSS;
-                
-                case Instructions::EOF:
-                    return Instructions::EOF;
-
-                default:
-                    return Instructions::unknownFun;
-            }
-
-        }
-
-        private function check_param_num($count)
-        {
-            if(count($this->buffer) != $count)
-            {
-                fwrite(STDERR, "Error, wrong number of parameters! Line: ");
-                fwrite(STDERR, $this->lineCount);
-                exit(23);
-            }
         }
 
         protected function check_var()
@@ -306,8 +172,177 @@
                 exit(23);
             }             
         }
+    }
+    
+    class Parser_vars extends Lexer
+    {
+        protected $token = 1;
+        protected $wasOP = false;
+        protected $buffer = [];
+        protected $lineCount = 0;
+        protected $instrCount = 0;
+        protected $filePointer = "text";
+        protected $xml = NULL;
+    }
+    
+    class Parser extends Parser_vars
+    {
+        
+        public function check_head()
+        {
+            $this->get_token();
+    
+            if((strcasecmp($this->token,".IPPcode19") != 0) or ($this->get_line_len() != 0))
+            {
+                fwrite(STDERR, "Error, expecting .IPPcode19 header! Line: ");
+                fwrite(STDERR, $this->lineCount);
+                fwrite(STDERR, "\n");
+                exit(21);
+            }
+        }
 
-        private function parse_zero_fun()
+        public function generate_head()
+        {
+            $this->xml = new XMLWriter();
+            
+            $this->xml->openMemory();
+            $this->xml->setIndent(true);
+            $this->xml->startDocument("1.0","UTF-8");
+            $this->xml->startElement("program");
+            $this->xml->writeAttribute("language","IPPcode19");
+        }
+
+        public function generate_eof()
+        {
+            $this->xml->endDocument();
+            $result = $this->xml->outputMemory();
+            print $result;
+        }
+
+        protected function generate_instruction()
+        {
+            $this->xml->startElement("instruction");
+            $this->xml->writeAttribute("order", $this->instrCount);
+            $this->xml->writeAttribute("opcode", $this->token);
+        }
+
+        protected function generate_arg($number, $type)
+        {
+            $arg = "arg" . $number;
+
+            $this->xml->startElement($arg);
+            $this->xml->writeAttribute("type", $type);
+            $this->xml->text($this->token);
+
+            $this->xml->endElement();
+        }
+
+        protected function generate_symb($choice, $number)
+        {
+            if($choice == false)
+            {
+                fwrite(STDERR, "Error, expecting <symb> function parameter! Line: ");
+                fwrite(STDERR, $this->lineCount);
+                exit(23);                
+            }
+            else if($choice == Instructions::varr)
+            {
+                $this->generate_arg($number, "var");
+            }
+            else if($choice == Instructions::val)
+            {
+                // Split on two parts, int@25 = int, 25, string@lol = string, lol
+                $split = explode("@", $this->token, 2);
+                $this->token = $split[1];
+
+                $this->generate_arg($number, $split[0]);
+            }
+        }
+
+
+        public function decode()
+        {
+            $this->get_token();
+            $this->token = strtoupper($this->token);
+
+            if($this->token[0] == "#")
+            {
+                return Instructions::comment;
+            }
+
+            switch($this->token)
+            {
+                case "CREATEFRAME":
+                case "PUSHFRAME":
+                case "POPFRAME":
+                case "RETURN":
+                case "BREAK":
+                    return Instructions::zeroParams;
+                
+                case "DEFVAR":
+                case "POPS":
+                    return Instructions::oneParamV;
+
+                case "CALL":
+                case "LABEL":
+                case "JUMP":
+                    return Instructions::oneParamL;
+
+                case "PUSHS":
+                case "WRITE":
+                case "EXIT":
+                case "DPRINT":
+                    return Instructions::oneParamS;
+
+                case "MOVE":
+                case "INT2CHAR":
+                case "STRLEN":
+                case "TYPE":
+                    return Instructions::twoParamVS;
+                
+                case "READ":
+                    return Instructions::twoParamVT;
+                
+                case "ADD":
+                case "SUB":
+                case "MUL":
+                case "IDIV":
+                case "LG":
+                case "GT":
+                case "EQ":
+                case "AND":
+                case "OR":
+                case "NOT":
+                case "STRI2INT":
+                case "CONCAT":
+                case "GETCHAR":
+                case "SETCHAR":
+                    return Instructions::threeParamVSS;
+                
+                case "JUMPIFEQ":
+                case "JUMPIFNEQ":
+                    return Instructions::threeParamLSS;
+                
+                case Instructions::EOF:
+                    return Instructions::EOF;
+
+                default:
+                    return Instructions::unknownFun;
+            }
+
+        }
+
+        protected function check_param_num($count)
+        {
+            if(count($this->buffer) != $count)
+            {
+                fwrite(STDERR, "Error, wrong number of parameters! Line: ");
+                fwrite(STDERR, $this->lineCount);
+                exit(23);
+            }
+        }
+
+        protected function parse_zero_fun()
         {
             $this->check_param_num(0);
 
@@ -318,7 +353,7 @@
             $this->parse();
         }
 
-        private function parse_oneL_fun()
+        protected function parse_oneL_fun()
         {
             $this->check_param_num(1);
 
@@ -333,7 +368,7 @@
             $this->parse();
         }
 
-        private function parse_oneV_fun()
+        protected function parse_oneV_fun()
         {
             $this->check_param_num(1);
 
@@ -348,7 +383,7 @@
             $this->parse();            
         }
 
-        private function parse_oneS_fun()
+        protected function parse_oneS_fun()
         {
             $this->check_param_num(1);
 
@@ -363,7 +398,7 @@
             $this->parse();
         }
 
-        private function parse_twoVS_fun()
+        protected function parse_twoVS_fun()
         {
             $this->check_param_num(2);
 
@@ -382,7 +417,7 @@
             $this->parse();
         }
 
-        private function parse_twoVT_fun()
+        protected function parse_twoVT_fun()
         {
             $this->check_param_num(2);
 
@@ -401,7 +436,7 @@
             $this->parse();
         }
 
-        private function parse_threeVSS_fun()
+        protected function parse_threeVSS_fun()
         {
             $this->check_param_num(3);
 
@@ -423,7 +458,7 @@
             $this->parse();
         }
 
-        private function parse_threeLSS_fun()
+        protected function parse_threeLSS_fun()
         {
             $this->check_param_num(3);
 
@@ -442,6 +477,13 @@
             $this->generate_symb($result, "3");
 
             $this->xml->endElement();
+
+            $this->parse();
+        }
+
+        protected function parse_comment()
+        {
+            $this->buffer = [];
 
             $this->parse();
         }
@@ -479,6 +521,10 @@
                     $this->parse_threeVSS_fun();
                     break;
 
+                case Instructions::comment:
+                    $this->parse_comment();
+                    break;
+
                 case Instructions::EOF:
                     break;
 
@@ -490,8 +536,10 @@
             }
         }
     }
-
     $parser = new Parser();
+
+    $parser->parse_args($argv);
+
     $parser->set_up();
 
     $parser->check_head();
