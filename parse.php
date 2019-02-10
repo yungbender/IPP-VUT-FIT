@@ -265,7 +265,7 @@
                 return Instructions::varr;
             }
 
-            $val_regex = "/^int@[-+]?[0-9]+$|^bool@true$|^bool@false$|^string@.*/";
+            $val_regex = "/^int@[-+]?[0-9]+$|^bool@true$|^bool@false$|^string@.*|^nil@nil$/";
 
             $result = preg_match($val_regex, $this->token);
 
