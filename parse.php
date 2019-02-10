@@ -117,6 +117,39 @@
             $this->xml->writeAttribute("opcode", $this->token);
         }
 
+        protected function generate_arg($number, $type)
+        {
+            $arg = "arg" . $number;
+
+            $this->xml->startElement($arg);
+            $this->xml->writeAttribute("type", $type);
+            $this->xml->text($this->token);
+
+            $this->xml->endElement();
+        }
+
+        protected function generate_symb($choice, $number)
+        {
+            if($choice == false)
+            {
+                fwrite(STDERR, "Error, expecting <symb> function parameter! Line: ");
+                fwrite(STDERR, $this->lineCount);
+                exit(23);                
+            }
+            else if($choice == Instructions::varr)
+            {
+                $this->generate_arg($number, "var");
+            }
+            else if($choice == Instructions::val)
+            {
+                // Split on two parts, int@25 = int, 25, string@lol = string, lol
+                $split = explode("@", $this->token, 2);
+                $this->token = $split[1];
+
+                $this->generate_arg($number, $split[0]);
+            }
+        }
+
         public function check_head()
         {
             $this->get_token();
@@ -225,7 +258,7 @@
         {
             $var_regex = "/^TF@[a-zA-Z0-9_\-$&%*!?]+$|^LF@[a-zA-Z0-9_\-$&%*!?]+$|^GF@[a-zA-Z0-9_\-$&%*!?]+$/";
 
-            $result = preg_match($regex, $this->token);
+            $result = preg_match($var_regex, $this->token);
 
             if($result)
             {
@@ -234,7 +267,7 @@
 
             $val_regex = "/^int@[-+]?[0-9]+$|^bool@true$|^bool@false$|^string@.*/";
 
-            $result = preg_match($regex, $this->token);
+            $result = preg_match($val_regex, $this->token);
 
             if($result)
             {
@@ -274,11 +307,6 @@
             }             
         }
 
-        protected function cut_symb()
-        {
-            $var_regex = ""
-        }
-
         private function parse_zero_fun()
         {
             $this->check_param_num(0);
@@ -297,14 +325,9 @@
             $this->generate_instruction();
 
             $this->get_token();
-            
             $this->check_label();
-
-            $this->xml->startElement("arg1");
-            $this->xml->writeAttribute("type","label");
-            $this->xml->text($this->token);
+            $this->generate_arg("1", "label");
             
-            $this->xml->endElement();
             $this->xml->endElement();
 
             $this->parse();
@@ -317,14 +340,9 @@
             $this->generate_instruction();
 
             $this->get_token();
-            
             $this->check_var();
-
-            $this->xml->startElement("arg1");
-            $this->xml->writeAttribute("type","var");
-            $this->xml->text($this->token);
+            $this->generate_arg("1", "var");
             
-            $this->xml->endElement();
             $this->xml->endElement();
 
             $this->parse();            
@@ -337,25 +355,95 @@
             $this->generate_instruction();
 
             $this->get_token();
-            
             $result = $this->check_symb();
+            $this->generate_symb($result, "1");
 
-            if($result == false)
-            {
-                fwrite(STDERR, "Error, expecting <symb> function parameter! Line: ");
-                fwrite(STDERR, $this->lineCount);
-                exit(23);                
-            }
-            else if($result == Instructions::varr)
-            {
-                $this->xml->startElement("arg1");
-                $this->xml->writeAttribute("type","var");
-                $this->xml->text($this->token);
-            }
-            else if($result == Instructions::val)
-            {
-                
-            }
+            $this->xml->endElement();
+
+            $this->parse();
+        }
+
+        private function parse_twoVS_fun()
+        {
+            $this->check_param_num(2);
+
+            $this->generate_instruction();
+
+            $this->get_token();
+            $this->check_var();
+            $this->generate_arg("1", "var");
+
+            $this->get_token();
+            $result = $this->check_symb();
+            $this->generate_symb($result, "2");
+
+            $this->xml->endElement();
+
+            $this->parse();
+        }
+
+        private function parse_twoVT_fun()
+        {
+            $this->check_param_num(2);
+
+            $this->generate_instruction();
+
+            $this->get_token();
+            $this->check_var();
+            $this->generate_arg("1", "var");
+
+            $this->get_token();
+            $this->check_type();
+            $this->generate_arg("2", "type");
+
+            $this->xml->endElement();
+
+            $this->parse();
+        }
+
+        private function parse_threeVSS_fun()
+        {
+            $this->check_param_num(3);
+
+            $this->generate_instruction();
+
+            $this->get_token();
+            $this->check_var();
+            $this->generate_arg("1", "var");
+
+            $this->get_token();
+            $result = $this->check_symb();
+            $this->generate_symb($result, "2");
+
+            $this->get_token();
+            $this->generate_symb($result, "3");
+
+            $this->xml->endElement();
+
+            $this->parse();
+        }
+
+        private function parse_threeLSS_fun()
+        {
+            $this->check_param_num(3);
+
+            $this->generate_instruction();
+
+            $this->get_token();
+            $this->check_label();
+            $this->generate_arg("1", "label");
+
+            $this->get_token();
+            $result = $this->check_symb();
+            $this->generate_symb($result, "2");
+
+            $this->get_token();
+            $result = $this->check_symb();
+            $this->generate_symb($result, "3");
+
+            $this->xml->endElement();
+
+            $this->parse();
         }
 
         public function parse()
@@ -385,7 +473,7 @@
                     $this->parse_twoVT_fun();
                     break;
                 case Instructions::threeParamLSS:
-                    $this->parse_twoLSS_fun();
+                    $this->parse_threeLSS_fun();
                     break;
                 case Instructions::threeParamVSS:
                     $this->parse_threeVSS_fun();
