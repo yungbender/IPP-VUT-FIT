@@ -181,7 +181,7 @@
         protected $buffer = [];
         protected $lineCount = 0;
         protected $instrCount = 0;
-        protected $filePointer = "text";
+        protected $filePointer = "php://stdin";
         protected $xml = NULL;
     }
     
@@ -484,7 +484,7 @@
         protected function parse_comment()
         {
             $this->buffer = [];
-
+            $this->instrCount--;
             $this->parse();
         }
 
