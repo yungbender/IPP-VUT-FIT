@@ -363,10 +363,8 @@
 
         public function print_hints()
         {
-            print "</table>
-            </body>
-            </html>";
-            print "<p style=\"font-size:10px;text-align:center;\">Warning! All tests (.in, .out) dont need to have \\n, but returning values (.rc) MUST have \\n at the end of the file.</p>";
+            print "</table>";
+            print "<p style=\"font-size:10px;text-align:center;\">Warning! All tests do NOT need to have an \"\\n\" at the end of the file.</p>";
             if(!is_file($this->parser) && !$this->intOnly)
             {
                 print "<p style=\"font-size:10px;text-align:center;\">Warning! \"parser.php\" not found! All tests for parser will fail.</p>"; 
@@ -375,6 +373,8 @@
             {
                 print "<p style=\"font-size:10px;text-align:center;\">Warning! \"interpret.py\" not found! All tests for interpret will fail.</p>"; 
             }
+            print "</body>
+            </html>";
         }
 
         public function clean_up()
