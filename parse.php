@@ -23,38 +23,96 @@
         const val = 113;
     }
 
+    abstract class Stats_flags
+    {
+        const instr = 200;
+        const comm = 201;
+        const labels = 202;
+        const jumps = 203;
+    }
+
+    class Stats
+    {
+        protected $file = NULL;
+        
+        protected $instructions = 0;
+        protected $comments = 0;
+        protected $labels = 0;
+        protected $jumps = 0;
+        protected $order = [];
+
+        public function parse_stats($argv)
+        {
+            $statArgc = 2;
+
+            $path = preg_grep("/^--stats=.+$/", $argv);
+            if(count($path) != 1)
+            {
+                fwrite(STDERR, "Error, unknwon parameters!\n");
+                exit(10);
+            }
+            $path = explode("=", $path[1]);
+            $path = $path[1];
+            $this->file = $path;
+            
+            $loc = preg_grep("/^--loc$/", $argv);
+            if(count($loc) == 1)
+            {
+                array_push($this->order, Stats_flags::instr);
+                $statArgc++;
+            }
+
+            $comments = preg_grep("/^--comments$/", $argv);
+            if(count($comments) == 1)
+            {
+                array_push($this->order, Stats_flags::comm);
+                $statArgc++;
+            }
+
+            $labels = preg_grep("/^--labels$/", $argv);
+            if(count($labels) == 1)
+            {
+                array_push($this->order, Stats_flags::labels);
+                $statArgc++;
+            }
+
+            $jumps = preg_grep("/^--jumps$/", $argv);
+            if(count($jumps) == 1)
+            {
+                array_push($this->order, Stats_flags::jumps);
+                $statArgc++;
+            }
+
+            if($statArgc != count($argv))
+            {
+                fwrite(STDERR, "Error, expecting parameters for stats!\n");
+                exit(10);
+            }
+        }
+
+        public function add_instr()
+        {
+            $this->instructions++;    
+        }
+
+        public function add_comm()
+        {
+            $this->comments++;
+        }
+
+        public function add_label()
+        {
+            $this->labels++;
+        }
+
+        public function add_jump()
+        {
+            $this->jumps++;
+        }
+    }
+
     class Lexer
     {
-        // TODO: KVOLI DEBUGGERU UPRAVIM NA FILE OPEN, POTOM OPRAVIT NA STDIN!!!!!!!!!!!!!!!!!!!!!!!!!!§§
-        public function set_up()
-        {
-            $this->filePointer = fopen($this->filePointer, 'r');
-        }
-
-        public function parse_args($argv)
-        {
-            $argc = count($argv);
-
-            if($argc == 1)
-            {
-                return;
-            }
-            else if($argc == 2)
-            {
-                if($argv[1] == "--help" or $argv[1] == "-h")
-                {
-                    print "IPPcode19 parser\n";
-                    print "Written by Tomáš Sasák for BUT FIT 2019.\n\n";
-                    print "Parser parses IPPcode19 language and translates it into XML representation.\n";
-                    print "Checks syntactic analysis and lexical analysis.\n";
-                    print "IPPcode19 is taken from STDIN.\n";
-                    exit(0);
-                }
-            }
-            fwrite(STDERR, "Error, unknown parameters!\n");
-            exit(10);
-        }
-
         protected function get_line_break()
         {
             $this->buffer = fgets($this->filePointer);
@@ -183,10 +241,45 @@
         protected $instrCount = 0;
         protected $filePointer = "php://stdin";
         protected $xml = NULL;
+        protected $statsRequested = false;
+        protected $stats = NULL;
     }
     
     class Parser extends Parser_vars
     {
+        public function set_up()
+        {
+            $this->filePointer = fopen($this->filePointer, 'r');
+        }
+
+        public function parse_args($argv)
+        {
+            $argc = count($argv);
+
+            if($argc == 1)
+            {
+                return;
+            }
+            else if($argc == 2)
+            {
+                if($argv[1] == "--help" or $argv[1] == "-h")
+                {
+                    print "IPPcode19 parser\n";
+                    print "Written by Tomáš Sasák for BUT FIT 2019.\n\n";
+                    print "Parser parses IPPcode19 language and translates it into XML representation.\n";
+                    print "Checks syntactic analysis and lexical analysis.\n";
+                    print "IPPcode19 is taken from STDIN.\n";
+                    exit(0);
+                }
+            }
+            else if(preg_grep("/^--stats=.+$/", $argv))
+            {
+                $this->stats = new Stats();
+                $this->stats->parse_stats($argv);
+            }
+            fwrite(STDERR, "Error, unknown parameters!\n");
+            exit(10);
+        }
         
         public function check_head()
         {
