@@ -41,9 +41,12 @@
         protected $jumps = 0;
         protected $order = [];
 
+        protected $request = false;
+
         public function parse_stats($argv)
         {
             $statArgc = 2;
+            $this->request = true;
 
             $path = preg_grep("/^--stats=.+$/", $argv);
             if(count($path) != 1)
@@ -95,6 +98,11 @@
             $this->instructions++;    
         }
 
+        public function sub_instr()
+        {
+            $this->instructions--;
+        }
+
         public function add_comm()
         {
             $this->comments++;
@@ -108,6 +116,50 @@
         public function add_jump()
         {
             $this->jumps++;
+        }
+
+        public function print_results()
+        {
+            if($this->request == false)
+            {
+                return;
+            }
+
+            $this->file = fopen($this->file, "w");
+            if($this->file == false)
+            {
+                fwrite(STDERR, "Error, creating the statistics file!\n");
+                exit(23);
+            }
+
+            while(!empty($this->order))
+            {
+                $top = $this->order[0];
+                array_shift($this->order);
+
+                switch($top)
+                {
+                    case Stats_flags::instr:
+                        fwrite($this->file, $this->instructions);
+                        break;
+
+                    case Stats_flags::comm:
+                        fwrite($this->file, $this->comments);
+                        break;
+
+                    case Stats_flags::labels:
+                        fwrite($this->file, $this->labels);
+                        break;
+
+                    case Stats_flags::jumps:
+                        fwrite($this->file, $this->jumps);
+                        break;
+                }
+
+                fwrite($this->file, "\n");
+            }
+
+            fclose($this->file);
         }
     }
 
@@ -241,7 +293,6 @@
         protected $instrCount = 0;
         protected $filePointer = "php://stdin";
         protected $xml = NULL;
-        protected $statsRequested = false;
         protected $stats = NULL;
     }
     
@@ -254,6 +305,7 @@
 
         public function parse_args($argv)
         {
+            $this->stats = new Stats();
             $argc = count($argv);
 
             if($argc == 1)
@@ -274,8 +326,8 @@
             }
             else if(preg_grep("/^--stats=.+$/", $argv))
             {
-                $this->stats = new Stats();
                 $this->stats->parse_stats($argv);
+                return;
             }
             fwrite(STDERR, "Error, unknown parameters!\n");
             exit(10);
@@ -352,6 +404,11 @@
             }
         }
 
+        public function generate_results()
+        {
+            $this->stats->print_results();
+        }
+
 
         public function decode()
         {
@@ -376,8 +433,11 @@
                 case "POPS":
                     return Instructions::oneParamV;
 
-                case "CALL":
                 case "LABEL":
+                    $this->stats->add_label();
+                    return Instructions::oneParamL;    
+
+                case "CALL":
                 case "JUMP":
                     return Instructions::oneParamL;
 
@@ -586,6 +646,7 @@
             $choice = $this->decode();
             
             $this->instrCount++;
+            $this->stats->add_instr();
 
             switch($choice)
             {
@@ -615,10 +676,13 @@
                     break;
 
                 case Instructions::comment:
+                    $this->stats->sub_instr();
+                    $this->stats->add_comm();
                     $this->parse_comment();
                     break;
 
                 case Instructions::EOF:
+                    $this->stats->sub_instr();
                     break;
 
                 case Instructions::unknownFun:
@@ -641,4 +705,6 @@
     $parser->parse();
 
     $parser->generate_eof();
+
+    $parser->generate_results();
 ?>
