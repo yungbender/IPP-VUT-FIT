@@ -256,10 +256,9 @@
                 if(!is_file($filename))
                 {
                     $creator = fopen($filename, "a");
-                    fwrite($creator, "0\n");
+                    fwrite($creator, "0");
                     fclose($creator);
                 }
-
                 if(!$this->intOnly)
                 {
                     $command = "php " . $this->parser . " < " . $i . ".src" . " > " . $i . ".superdupermemexml 2>&1";
@@ -267,12 +266,12 @@
                     
                     if($retval != "0\n")
                     {
-                        shell_exec("echo \"$retval\" > $i.superdupermemeretval");
+                        shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
                         continue;
                     }
                     else
                     {
-                        shell_exec("echo \"0\" > $i.superdupermemeretval");
+                        shell_exec("echo -n \"0\" > $i.superdupermemeretval");
                     }
                 }
 
@@ -283,7 +282,7 @@
                     
                     if($retval != "0\n")
                     {
-                        shell_exec("echo \"$retval\" > $i.superdupermemeretval");
+                        shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
                         continue;
                     }
                 }

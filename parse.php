@@ -15,8 +15,6 @@
         const threeParamVSS = 108;
         const threeParamLSS = 109;
 
-        const comment = 110;
-
         const unknownFun = 111;
 
         const varr = 112;
@@ -179,6 +177,9 @@
             
             $this->buffer = trim(preg_replace("/\s+/", " ", $this->buffer));
             $this->buffer = explode(" ", $this->buffer);
+            
+            $this->check_comments();
+
 
             if($this->buffer[0] == NULL)
             {
@@ -186,6 +187,7 @@
                 array_push($this->buffer, Instructions::EMPTY);
                 return;
             }
+
         }
 
         protected function get_token()
@@ -208,6 +210,29 @@
             if($this->token == Instructions::EMPTY)
             {
                 $this->get_token();
+            }
+        }
+
+        protected function check_comments()
+        {
+            $comments = preg_grep("/^#.*$/", $this->buffer);
+            if(!empty($comments))
+            {
+                $this->stats->add_comm();
+                $comment = array_pop($comments);
+                $comment_begin = array_search($comment, $this->buffer);
+                $len = count($this->buffer);
+
+                for($comment_begin; $comment_begin < $len; $comment_begin++)
+                {
+                    unset($this->buffer[$comment_begin]);
+                }
+                
+                # If the buffer was full of comment, put there NULL, so get_token function can detect that the line is empty.
+                if(empty($this->buffer))
+                {
+                    $this->buffer = [NULL];
+                }
             }
         }
 
@@ -414,11 +439,6 @@
         {
             $this->get_token();
             $this->token = strtoupper($this->token);
-
-            if($this->token[0] == "#")
-            {
-                return Instructions::comment;
-            }
 
             switch($this->token)
             {
@@ -673,12 +693,6 @@
                     break;
                 case Instructions::threeParamVSS:
                     $this->parse_threeVSS_fun();
-                    break;
-
-                case Instructions::comment:
-                    $this->stats->sub_instr();
-                    $this->stats->add_comm();
-                    $this->parse_comment();
                     break;
 
                 case Instructions::EOF:
