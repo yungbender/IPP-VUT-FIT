@@ -316,7 +316,7 @@
         protected $buffer = [];
         protected $lineCount = 0;
         protected $instrCount = 0;
-        protected $filePointer = "php://stdin";
+        protected $filePointer = "text";
         protected $xml = NULL;
         protected $stats = NULL;
     }
@@ -442,10 +442,11 @@
 
             switch($this->token)
             {
+                case "RETURN":
+                    $this->stats->add_jump();
                 case "CREATEFRAME":
                 case "PUSHFRAME":
                 case "POPFRAME":
-                case "RETURN":
                 case "BREAK":
                     return Instructions::zeroParams;
                 
@@ -457,8 +458,9 @@
                     $this->stats->add_label();
                     return Instructions::oneParamL;    
 
-                case "CALL":
                 case "JUMP":
+                case "CALL":
+                    $this->stats->add_jump();
                     return Instructions::oneParamL;
 
                 case "PUSHS":
@@ -480,7 +482,7 @@
                 case "SUB":
                 case "MUL":
                 case "IDIV":
-                case "LG":
+                case "LT":
                 case "GT":
                 case "EQ":
                 case "AND":
@@ -494,6 +496,7 @@
                 
                 case "JUMPIFEQ":
                 case "JUMPIFNEQ":
+                    $this->stats->add_jump();
                     return Instructions::threeParamLSS;
                 
                 case Instructions::EOF:
@@ -624,6 +627,7 @@
             $this->generate_symb($result, "2");
 
             $this->get_token();
+            $result = $this->check_symb();
             $this->generate_symb($result, "3");
 
             $this->xml->endElement();
