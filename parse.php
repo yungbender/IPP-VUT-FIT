@@ -215,24 +215,41 @@
 
         protected function check_comments()
         {
-            $comments = preg_grep("/^#.*$/", $this->buffer);
+            $comments = preg_grep("/#.*$/", $this->buffer);
             if(!empty($comments))
             {
                 $this->stats->add_comm();
-                $comment = array_pop($comments);
-                $comment_begin = array_search($comment, $this->buffer);
+                $triggered = 0;
                 $len = count($this->buffer);
 
-                for($comment_begin; $comment_begin < $len; $comment_begin++)
+                for($token = key($this->buffer); $token < $len; $token++)
                 {
-                    unset($this->buffer[$comment_begin]);
+                    
+                    if($triggered == 1)
+                    {
+                        unset($this->buffer[$token]);
+                        continue;
+                    }
+                    $isThere = preg_match("/#.*$/", $this->buffer[$token]);
+                    if($isThere == 1)
+                    {
+                        $triggered = 1;
+                    }
+
+                    $value = preg_replace("/#.*$/", "", $this->buffer[$token]);
+
+                    if($value == "")
+                    {
+                        unset($this->buffer[$token]);
+                        continue;
+                    }
+                    $this->buffer[$token] = $value;
                 }
-                
-                # If the buffer was full of comment, put there NULL, so get_token function can detect that the line is empty.
+
                 if(empty($this->buffer))
                 {
                     $this->buffer = [NULL];
-                }
+                } 
             }
         }
 
