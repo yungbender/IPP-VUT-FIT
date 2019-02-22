@@ -100,7 +100,7 @@ class Interpret:
         input_re = re.compile(r"^--input=.+$")
         is_input = list(filter(input_re.search, sys.argv))
 
-        if is_input and len(is_source) == 1:
+        if is_input and len(is_input) == 1:
             argc+= 1
             path = is_input[0].split("=", 1)
             self.__input = path[1]
@@ -266,7 +266,7 @@ class Interpret:
             return frame, dest, "var"
         
         symb = "@".join(arg)
-        regex = re.compile(r"^int@[-+]?[0-9]+$|^bool@true$|^bool@false$|^string@.*")
+        regex = re.compile(r"^int@[-+]?[0-9]+$|^bool@true$|^bool@false$|^string@.*|^nil@nil$")
 
         result = regex.search(symb)
 
@@ -556,10 +556,14 @@ class Interpret:
                 elif op == "GT":
                     frame[dest] = source1 > source2
                 elif op == "EQ":
-                    frame[dest] = source1 == source2
-                elif op == "AND":
-                    frame[dest] = source1 // source2
+                    if type(source1) is not type(source2):
+                        self.print_error("Error, " + op + "incorrect data types!\n", 53)
+                    if type(source1) == Nil and type(source2) == Nil:
+                        frame[dest] = True
+                        self.execute()
 
+                    frame[dest] = source1 == source2
+    
             except:
                 self.print_error("Error, " + op + " incorrect data types!\n", 53)
 
@@ -571,9 +575,13 @@ class Interpret:
                 elif op == "GT":
                     frame[dest] = type_1[source1] > type_2[source2]
                 elif op == "EQ":
+                    if type(type_1[source1]) is not type(type_2[source2]):
+                        self.print_error("Error, " + op + "incorrect data types!\n", 53)
+                    if type(type_1[source1]) == Nil and type(type_2[source2]) == Nil:
+                        frame[dest] = True
+                        self.execute()
+
                     frame[dest] = type_1[source1] == type_2[source2]
-                elif op == "IDIV":
-                    frame[dest] = type_1[source1] // type_2[source2]
 
             except:
                 self.print_error("Error, " + op + " incorrect data types!\n", 53)
@@ -581,14 +589,17 @@ class Interpret:
         elif whatIsIt1 == "var" and whatIsIt2 == "const":
             source2 = self.get_value(type_2, source2)
             try:
-                if op == "ADD":
+                if op == "LT":
                     frame[dest] = type_1[source1] < source2
-                elif op == "SUB":
+                elif op == "GT":
                     frame[dest] = type_1[source1] > source2
-                elif op == "MUL":
+                elif op == "EQ":
+                    if type(type_1[source1]) is not type(source2):
+                        self.print_error("Error, " + op + "incorrect data types!\n", 53)
+                    if type(type_1[source1]) == Nil and type(source2) == Nil:
+                        frame[dest] = True
+                        self.execute()
                     frame[dest] = type_1[source1] == source2
-                elif op == "IDIV":
-                    frame[dest] = type_1[source1] // source2
 
             except:
                 self.print_error("Error, " + op + " incorrect data types!\n", 53)
@@ -596,19 +607,69 @@ class Interpret:
         else:
             source1 = self.get_value(type_1, source1)
             try:
-                if op == "ADD":
+                if op == "LT":
                     frame[dest] = source1 < type_2[source2]
-                elif op == "SUB":
+                elif op == "GT":
                     frame[dest] = source1 > type_2[source2]
-                elif op == "MUL":
+                elif op == "EQ":
+                    if type(source1) is not type(type_2[source2]):
+                        self.print_error("Error, " + op + "incorrect data types!\n", 53)
+                    if type(source1) == Nil and type(type_2[source2]) == Nil:
+                        frame[dest] = True
+                        self.execute()
                     frame[dest] = source1 == type_2[source2]
-                elif op == "IDIV":
-                    frame[dest] = source1 // type_2[source2]
             except:
                 self.print_error("Error, " + op + " incorrect data types!\n", 53)
 
         self.execute()
 
+    def int2char(self):
+        argc = self.__instruction.argc()
+
+        if argc != 2:
+            self.print_error("Error, wrong arguments on INT2CHAR instruction!\n", 32)
+        
+        frame, dst = self.parse_var(self.__instruction.arg1)
+        self.check_if_exists(frame, dst, "INT2CHAR")
+
+        type_, src, whatIsIt = self.parse_symb(self.__instruction.arg2)
+        if whatIsIt == "var":
+            self.check_if_exists(type_, src, "INT2CHAR")
+            try:
+                source = chr(type_[src])
+            except:
+                self.print_error("Error, INT2CHAR wrong value to change char to!\n.", 58)
+
+        else:
+            src = self.get_value(type_, src)
+            try:
+                source = chr(src)
+            except:
+                self.print_error("Error, INT2CHAR wrong value to change char to!\n.", 58)
+
+        frame[dst] = source
+
+        self.execute()
+
+    def exit_(self):
+        argc = self.__instruction.argc()
+
+        if argc != 1:
+            self.print_error("Error, wrong arguments on EXIT instruction!\n", 32)
+        
+        type_, src, whatIsIt = self.parse_symb(self.__instruction.arg1)
+
+        if whatIsIt == "var":
+            self.check_if_exists(type_, src, "EXIT")
+            source = type_[src]
+        
+        else:
+            source = self.get_value(type_, src)
+
+        if type(source) is not int or not source >= 0 or not source <= 49:
+            self.print_error("Error, EXIT wrong exit number!\n", 57)
+        
+        sys.exit(source)
 
     def dprint(self):
         argc = self.__instruction.argc()
@@ -677,7 +738,7 @@ class Interpret:
         elif self.__instruction.opcode == "NOT":
             self.logical("NOT")
         elif self.__instruction.opcode == "INT2CHAR":
-            self.read()
+            self.int2char()
         elif self.__instruction.opcode == "STRI2INT":
             self.stri2int()
         elif self.__instruction.opcode == "READ":
@@ -701,7 +762,7 @@ class Interpret:
         elif self.__instruction.opcode == "JUMPIFNEQ":
             self.jumpifneq()
         elif self.__instruction.opcode == "EXIT":
-            self.exit()
+            self.exit_()
         elif self.__instruction.opcode == "DPRINT":
             self.dprint()
         elif self.__instruction.opcode == "BREAK":

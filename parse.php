@@ -37,6 +37,7 @@
         protected $comments = 0;
         protected $labels = 0;
         protected $jumps = 0;
+        protected $labelsName = [];
         protected $order = [];
 
         protected $request = false;
@@ -106,9 +107,17 @@
             $this->comments++;
         }
 
-        public function add_label()
+        public function add_label($buffer)
         {
-            $this->labels++;
+            if(empty($buffer))
+            {
+                return;
+            }
+            if(!in_array($buffer[0], $this->labelsName))
+            {
+                array_push($this->labelsName, $buffer[0]);
+                $this->labels++;
+            }
         }
 
         public function add_jump()
@@ -333,7 +342,7 @@
         protected $buffer = [];
         protected $lineCount = 0;
         protected $instrCount = 0;
-        protected $filePointer = "text";
+        protected $filePointer = "php://stdin";
         protected $xml = NULL;
         protected $stats = NULL;
     }
@@ -472,7 +481,7 @@
                     return Instructions::oneParamV;
 
                 case "LABEL":
-                    $this->stats->add_label();
+                    $this->stats->add_label($this->buffer);
                     return Instructions::oneParamL;    
 
                 case "JUMP":

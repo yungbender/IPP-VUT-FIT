@@ -200,20 +200,7 @@
             {
                 $testname = substr($i, 0, -4);
 
-                if(!$this->intOnly)
-                {
-                    exec("diff $testname.in $testname.superdupermemexml", $output, $diff);
-                    if($diff == "0\n")
-                    {
-                        array_push($this->resultsParse, true);
-                    }
-                    else
-                    {
-                        array_push($this->resultsParse, false);
-                    }
-                }
-
-                if(!$this->parseOnly)
+                if(!$this->parseOnly or ($this->parseOnly == $this->intOnly))
                 {
                     exec("diff $testname.out $testname.superdupermemeint", $output, $diff);
                     if($diff == "0\n")
@@ -223,6 +210,19 @@
                     else
                     {
                         array_push($this->resultsInt, false);
+                    }
+                }
+
+                else
+                {
+                    exec("xmldiff $testname.out $testname.superdupermemexml", $output, $diff);
+                    if($diff == "0\n")
+                    {
+                        array_push($this->resultsParse, true);
+                    }
+                    else
+                    {
+                        array_push($this->resultsParse, false);
                     }
                 }
 
@@ -259,7 +259,8 @@
                     fwrite($creator, "0");
                     fclose($creator);
                 }
-                if(!$this->intOnly)
+
+                if(!$this->intOnly or ($this->intOnly == $this->parseOnly))
                 {
                     $command = "php " . $this->parser . " < " . $i . ".src" . " > " . $i . ".superdupermemexml 2>&1";
                     exec($command, $output, $retval);
@@ -267,7 +268,20 @@
                     if($retval != "0\n")
                     {
                         shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
-                        continue;
+                    }
+                    else if($this->intOnly == $this->parseOnly)
+                    {
+                        $command = "python3 " . $this->interpret . " --input=$i.in" . " < " . $i . ".superdupermemexml" . " > " . $i . ".superdupermemeint 2>&1";
+                        exec($command, $output, $retval);
+                        
+                        if($retval != "0\n")
+                        {
+                            shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
+                        }
+                        else
+                        {
+                            shell_exec("echo -n \"0\" > $i.superdupermemeretval");
+                        }
                     }
                     else
                     {
@@ -275,15 +289,14 @@
                     }
                 }
 
-                if(!$this->parseOnly)
+                else if(!$this->parseOnly)
                 {
-                    $command = "python3 " . $this->interpret . " < " . $i . ".in" . " > " . $i . ".superdupermemeint 2>&1";
+                    $command = "python3 " . $this->interpret . "--input=$i.in" . " < " . $i . ".src" . " > " . $i . ".superdupermemeint 2>&1";
                     exec($command, $output, $retval);
                     
                     if($retval != "0\n")
                     {
                         shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
-                        continue;
                     }
                 }
             }
@@ -307,13 +320,14 @@
             <table style=\"text-align:center;width:100%;font-size:12px\">\n";
             print "<tr style=\"font-size:17px\">";
             print "<th>File</th>";
-            if(!$this->intOnly)
-            {
-                print "<th>Parser</th>";
-            }
-            if(!$this->parseOnly)
+
+            if(!$this->parseOnly or ($this->parseOnly == $this->intOnly))
             {
                 print "<th>Interpret</th>";
+            }
+            else if(!$this->intOnly)
+            {
+                print "<th>Parser</th>";
             }
             
             print "<th>Return code</th> </tr>";
@@ -324,18 +338,7 @@
                 print "<tr>";
                 $file = $this->files[$i];
                 print "<th style=\"font-size:10px\">$file</th>";
-                if(!$this->intOnly)
-                {
-                    if($this->resultsParse[$i] == true)
-                    {
-                        print "<th style=\"color:green\"> Success </th>";
-                    }
-                    else
-                    {
-                        print "<th style=\"color:red\"> Failed </th>";
-                    }
-                }
-                if(!$this->parseOnly)
+                if(!$this->parseOnly or ($this->parseOnly == $this->intOnly))
                 {
                     if($this->resultsInt[$i] == true)
                     {
@@ -346,6 +349,18 @@
                         print "<th style=\"color:red\"> Failed </th>";
                     }
                 }
+                else if(!$this->intOnly)
+                {
+                    if($this->resultsParse[$i] == true)
+                    {
+                        print "<th style=\"color:green\"> Success </th>";
+                    }
+                    else
+                    {
+                        print "<th style=\"color:red\"> Failed </th>";
+                    }
+                }
+
 
                 if($this->resultsRetval[$i] == true)
                 {
@@ -363,7 +378,6 @@
         public function print_hints()
         {
             print "</table>";
-            print "<p style=\"font-size:10px;text-align:center;\">Warning! All tests do NOT need to have an \"\\n\" at the end of the file.</p>";
             if(!is_file($this->parser) && !$this->intOnly)
             {
                 print "<p style=\"font-size:10px;text-align:center;\">Warning! \"parser.php\" not found! All tests for parser will fail.</p>"; 
@@ -382,17 +396,18 @@
             {
                 $filename = substr($i, 0, -4);
 
-                if(!$this->parseOnly)
+                if(is_file("$filename.superdupermemeint"))
                 {
-                    shell_exec("rm $filename.superdupermemeint");
+                    exec("rm $filename.superdupermemeint");
                 }
 
-                if($this->intOnly)
+                if(is_file("$filename.superdupermemexml"))
                 {
-                    shell_exec("rm $filename.superdupermemexml");
+                    exec("rm $filename.superdupermemexml");
                 }
                 
-                shell_exec("rm $filename.superdupermemeretval");
+                
+                exec("rm $filename.superdupermemeretval");
             }
         }
     }
