@@ -172,6 +172,10 @@
 
     class Lexer
     {
+        protected $token = 1;
+        protected $buffer = [];
+        protected $filePointer = "php://stdin";
+
         protected function get_line_break()
         {
             $this->buffer = fgets($this->filePointer);
@@ -335,23 +339,16 @@
         }
     }
     
-    class Parser_vars extends Lexer
+    class Parser extends Lexer
     {
-        protected $token = 1;
-        protected $wasOP = false;
-        protected $buffer = [];
         protected $lineCount = 0;
         protected $instrCount = 0;
-        protected $filePointer = "php://stdin";
         protected $xml = NULL;
         protected $stats = NULL;
-    }
-    
-    class Parser extends Parser_vars
-    {
         public function set_up()
         {
             $this->filePointer = fopen($this->filePointer, 'r');
+            $this->xml = new XMLWriter();
         }
 
         public function parse_args($argv)
@@ -399,7 +396,6 @@
 
         public function generate_head()
         {
-            $this->xml = new XMLWriter();
             
             $this->xml->openMemory();
             $this->xml->setIndent(true);
@@ -681,13 +677,6 @@
 
             $this->xml->endElement();
 
-            $this->parse();
-        }
-
-        protected function parse_comment()
-        {
-            $this->buffer = [];
-            $this->instrCount--;
             $this->parse();
         }
 

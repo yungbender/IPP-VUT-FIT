@@ -283,16 +283,38 @@ class Interpret:
 
         return arg[1]
 
+    def parse_type(self, arg):
+        if len(arg) != 2:
+            self.print_error("Error, expecting <type>!\n", 32)
+        
+        if arg[0] != "type":
+            self.print_error("Error, expecting <type>!\n", 32)
+         
+        regex = re.compile(r"^int$|^bool$|^string$")
+        result = regex.search(arg[1])
+
+        if result == None:
+            self.print_error("Error, expecing <type>!\n", 32)
+        
+        return arg[1]
+
     def get_value(self, type_, src):
         if type_ == "int":
-            value = int(src)
+            try:
+                value = int(src)
+            except:
+                self.print_error("Error, constant has wrong data type!\n", 57)
         elif type_ == "string":
             value = src
         elif type_ == "bool":
-            if src == "true":
-                value = True
-            else:
-                value = False
+            try:
+                srcBool = src.lower()
+                if src == "true" or src == "true\n":
+                    value = True
+                else:
+                    value = False
+            except:
+                self.print_error("Error, constant has wrong data type!\n", 57)
         elif type_ == "nil":
             value = Nil()
         else:
@@ -650,6 +672,96 @@ class Interpret:
         frame[dst] = source
 
         self.execute()
+
+    def stri2int(self):
+        argc = self.__instruction.argc()
+
+        if argc != 3:
+            self.print_error("Error, wrong arguments on STRI2INT instruction!\n", 32)
+
+        frame, dst = self.parse_var(self.__instruction.arg1)
+        self.check_if_exists(frame, dst, "STRI2INT")
+
+        type_1, src1, whatIsIt = self.parse_symb(self.__instruction.arg2)
+        if whatIsIt == "var":
+            self.check_if_exists(type_1, src1, "STRI2INT")
+            src1 = type_1[src1]
+        else:
+            src1 = self.get_value(type_1, src1)
+
+        if type(src1) is not str:
+            self.print_error("Error, STRI2INT <symb1> is not string!\n", 57)
+
+        type_2, index, whatIsIt = self.parse_symb(self.__instruction.arg3)
+        if whatIsIt == "var":
+            self.check_if_exists(type_2, index, "STRI2INT")
+            index = type_2[index]
+        else:
+            index = self.get_value(type_2, index)
+
+        if type(index) is not int:
+            self.print_error("Error, STRI2INT <symb2> is not int(index)!\n", 57)
+
+        if index >= len(src1) or index < 0:
+            self.print_error("Error, STRI2INT index is out of range!\n", 58)
+
+        frame[dst] = ord(src1[index]) 
+
+        self.execute()
+
+    def read(self):
+        argc = self.__instruction.argc()
+
+        if argc != 2:
+            self.print_error("Error, wrong arguments on READ instruction!\n", 32)
+
+        frame, dst = self.parse_var(self.__instruction.arg1)
+        self.check_if_exists(frame, dst, "READ")
+
+        dataType = self.parse_type(self.__instruction.arg2)
+
+        if self.__input == "STDIN":
+            value = input()
+            value = self.get_value(dataType, value)
+        else:
+            value = self.__input.readline()
+            value = self.get_value(dataType, value)
+        
+        frame[dst] = value
+
+        self.execute()
+
+    def format_string(self, string):
+        regex = re.findall(r"\\[0-9]{3}", string)
+        
+        result = regex.split(string)
+
+        print(result)
+
+
+
+    def write(self):
+        argc = self.__instruction.argc()
+
+        if argc != 1:
+            self.print_error("Error, wrong arguments on WRITE instruction!\n", 32)
+
+        type_1, src, whatIsIt = self.parse_symb(self.__instruction.arg1)
+        if whatIsIt == "var":
+            self.check_if_exists(type_1, src, "WRITE")
+            src = type_1[src]
+        else:
+            src = self.get_value(type_1, src)
+        
+        if type_1 == "string" or type(src) is str:
+            src = self.format_string(src)
+        elif type(src) is bool:
+            if src == True:
+                src = "true"
+            else:
+                src = "false"
+        
+        sys.stdout.write(str(src))
 
     def exit_(self):
         argc = self.__instruction.argc()
