@@ -1,4 +1,5 @@
 <?php
+    // Abstract class used for enumeration of instructions
     abstract class Instructions
     {
         const EOF = 100;
@@ -21,6 +22,7 @@
         const val = 113;
     }
 
+    // Abstract class used for enumeration of requested stats
     abstract class Stats_flags
     {
         const instr = 200;
@@ -29,19 +31,32 @@
         const jumps = 203;
     }
 
+    // Statistics class with counters and operator with them
     class Stats
     {
+        // Holds file stream where the statistics result will be
+        // printed after parsing
         protected $file = NULL;
         
+        // These variables are holding the number of instructions
+        // in IPPcode19 input (stats counters)
         protected $instructions = 0;
         protected $comments = 0;
         protected $labels = 0;
         protected $jumps = 0;
+
+        // Array which contains label names, to prevent counting
+        // of nonunique labels
         protected $labelsName = [];
+        // Array which contains enums from Stats_flags, these enums
+        // hold requested elements from statistics
         protected $order = [];
 
+        // Bool which signifies if the --stats parameter was requested
         protected $request = false;
 
+        // Method parses stats arguments and opens the $file for output
+        // and adds enums to the order
         public function parse_stats($argv)
         {
             $statArgc = 2;
@@ -92,21 +107,25 @@
             }
         }
 
+        // add 1 to the $instruction
         public function add_instr()
         {
             $this->instructions++;    
         }
 
+        // sub 1 from the $instruction 
         public function sub_instr()
         {
             $this->instructions--;
         }
 
+        // add 1 to the $comments
         public function add_comm()
         {
             $this->comments++;
         }
 
+        // add 1 to the $labels (unique label count)
         public function add_label($buffer)
         {
             if(empty($buffer))
@@ -120,11 +139,15 @@
             }
         }
 
+        // add 1 to the $jumps
         public function add_jump()
         {
             $this->jumps++;
         }
 
+        // Method prints out results of statistics, if they 
+        // were requested, method prints out the numbers based
+        // on array $order
         public function print_results()
         {
             if($this->request == false)
@@ -170,12 +193,17 @@
         }
     }
 
+    // Class represents Lexical Analyser from compilers
     class Lexer
     {
+        // Represents current loaded token
         protected $token = 1;
+        // Represents array of (yet unprocessed)tokens on current line
         protected $buffer = [];
+        // Represents place, from which is the input taken
         protected $filePointer = "php://stdin";
 
+        // Loads line and splits it into tokens to $buffer
         protected function get_line_break()
         {
             $this->buffer = fgets($this->filePointer);
@@ -203,6 +231,7 @@
 
         }
 
+        // Loads token from $buffer into $token (removes it from buffer)
         protected function get_token()
         {
             if($this->token == Instructions::EOF)
@@ -226,6 +255,7 @@
             }
         }
 
+        // Removes all comments from $buffer (useless tokens)
         protected function check_comments()
         {
             $comments = preg_grep("/#.*$/", $this->buffer);
@@ -266,11 +296,14 @@
             }
         }
 
+        // Returns the number of tokens in $buffer
         protected function get_line_len()
         {
             return count($this->buffer);
         }
 
+        // Checks if the current loaded token represents <var> nonterminal
+        // from specification, using regular expressions
         protected function check_var()
         {
             $regex = "/^TF@[a-zA-Z0-9_\-$&%*!?]+$|^LF@[a-zA-Z0-9_\-$&%*!?]+$|^GF@[a-zA-Z0-9_\-$&%*!?]+$/";
@@ -285,6 +318,8 @@
             }
         }
 
+        //Checks if the current loaded token represents <symb> nonterminal 
+        // from specification, using regular expressions
         protected function check_symb()
         {
             $var_regex = "/^TF@[a-zA-Z0-9_\-$&%*!?]+$|^LF@[a-zA-Z0-9_\-$&%*!?]+$|^GF@[a-zA-Z0-9_\-$&%*!?]+$/";
@@ -310,6 +345,8 @@
             }
         }
 
+        // Checks if the current loaded token represents <label> nonterminal
+        // from specification, using regular expressions
         protected function check_label()
         {
             $regex = "/^[a-zA-Z0-9_\-$&%*!?]+$/";
@@ -324,6 +361,8 @@
             }            
         }
 
+        // Checks if the current loaded token represents <type> nonterminal
+        // from specification, using regular expressions
         protected function check_type()
         {
             $regex = "/^int$|^bool$|^string$/";
@@ -339,18 +378,27 @@
         }
     }
     
+    // Syntactic analyser and heart of the script
     class Parser extends Lexer
     {
+        // Holds the current line in file
         protected $lineCount = 0;
+        // Holds the number of current parsed instruction
         protected $instrCount = 0;
+        // Object to the XMLWriter library, which used to write XML easier
         protected $xml = NULL;
+        // Object created based on Stats class, used to hold current statistics of current 
+        // input
         protected $stats = NULL;
+
+        // Opens up the standart input and creates the XMLWriter object
         public function set_up()
         {
             $this->filePointer = fopen($this->filePointer, 'r');
             $this->xml = new XMLWriter();
         }
 
+        // Method takes program arguments, and checks if they are correct
         public function parse_args($argv)
         {
             $this->stats = new Stats();
@@ -381,6 +429,7 @@
             exit(10);
         }
         
+        // Checks if the current loaded token is IPPcode19 header
         public function check_head()
         {
             $this->get_token();
@@ -394,6 +443,7 @@
             }
         }
 
+        // Generates the XML version header and the root program element
         public function generate_head()
         {
             
@@ -404,6 +454,8 @@
             $this->xml->writeAttribute("language","IPPcode19");
         }
 
+        // Method, finishes the work with the XMLWriter object and prints out 
+        // the XML output
         public function generate_eof()
         {
             $this->xml->endDocument();
@@ -411,6 +463,8 @@
             print $result;
         }
 
+        // Generates instruction element based on current token and 
+        // instruction count
         protected function generate_instruction()
         {
             $this->xml->startElement("instruction");
@@ -418,6 +472,9 @@
             $this->xml->writeAttribute("opcode", $this->token);
         }
 
+        // Generates the <argX> element into XML output, the X number is taken
+        // from $number parameter and $type represents the type attribute in XML tag
+        // arg and element value is taken from current loaded token
         protected function generate_arg($number, $type)
         {
             $arg = "arg" . $number;
@@ -429,6 +486,9 @@
             $this->xml->endElement();
         }
 
+        // Method, based on the flag Instruction::var or Instruction::val from
+        // and current token will send the correct type and number of argument to the
+        // generate_arg()
         protected function generate_symb($choice, $number)
         {
             if($choice == false)
@@ -451,12 +511,17 @@
             }
         }
 
+        // Calls from $stats method print_results, which prints the
+        // statistics results into file
         public function generate_results()
         {
             $this->stats->print_results();
         }
 
 
+        // Decodes the instruction by the current loaded token and returns the flag
+        // of the instruction based on the number and nonterminal of parameters, which 
+        // function takes, from Instruction enum class
         public function decode()
         {
             $this->get_token();
@@ -530,6 +595,8 @@
 
         }
 
+        // Checks if the current token instruction has $count number of
+        // parameters
         protected function check_param_num($count)
         {
             if(count($this->buffer) != $count)
@@ -540,6 +607,8 @@
             }
         }
 
+        // Parses instructions with 0 parameters, checks the number of 
+        // tokens in buffer, and generates the correct XML tags
         protected function parse_zero_fun()
         {
             $this->check_param_num(0);
@@ -551,6 +620,8 @@
             $this->parse();
         }
 
+        // parses instructions with 1 parameter which is nonterminal 
+        // <label>
         protected function parse_oneL_fun()
         {
             $this->check_param_num(1);
@@ -566,6 +637,8 @@
             $this->parse();
         }
 
+        // parses instructions with 1 parameter which is nonterminal
+        // <var>
         protected function parse_oneV_fun()
         {
             $this->check_param_num(1);
@@ -581,6 +654,8 @@
             $this->parse();            
         }
 
+        // parses instructions with 1 parameter which is nonterminal 
+        // <symb>
         protected function parse_oneS_fun()
         {
             $this->check_param_num(1);
@@ -596,6 +671,8 @@
             $this->parse();
         }
 
+        // parses instructions with 2 parameters which are in order 
+        // <var> <symb>
         protected function parse_twoVS_fun()
         {
             $this->check_param_num(2);
@@ -615,6 +692,8 @@
             $this->parse();
         }
 
+        // parses instructions with 2 parameters which are in order
+        // <var> <type>
         protected function parse_twoVT_fun()
         {
             $this->check_param_num(2);
@@ -634,6 +713,8 @@
             $this->parse();
         }
 
+        // parses instructions with 3 parameters which are in order 
+        // <var> <symb> <symb>
         protected function parse_threeVSS_fun()
         {
             $this->check_param_num(3);
@@ -657,6 +738,8 @@
             $this->parse();
         }
 
+        // parses instructions with 3 parameters which are in order 
+        // <label> <symb> <symb>
         protected function parse_threeLSS_fun()
         {
             $this->check_param_num(3);
@@ -680,6 +763,8 @@
             $this->parse();
         }
 
+        // Starts the parsing process by decoding the instruction 
+        // and sending the parser to the correct parsing parsing instruction
         public function parse()
         {
             $choice = $this->decode();

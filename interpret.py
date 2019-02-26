@@ -177,11 +177,15 @@ class Interpret:
         if arg1 != None:
             instr.arg1.append(arg1.get("type"))
             instr.arg1.append(arg1.text)
+            if instr.arg1[1] == None:
+                instr.arg1[1] = ""
         
         arg2 = part.find("arg2")
         if arg2 != None:
             instr.arg2.append(arg2.get("type"))
             instr.arg2.append(arg2.text)
+            if instr.arg2[1] == None:
+                instr.arg2[1] = ""
         if len(instr.arg1) == 0 and len(instr.arg2) != 0:
             self.print_error("Error, wrong arguments of function!\n", 32)
 
@@ -189,6 +193,8 @@ class Interpret:
         if arg3 != None:
             instr.arg3.append(arg3.get("type"))
             instr.arg3.append(arg3.text)
+            if instr.arg3[1] == None:
+                instr.arg3[1] = ""
         if len(instr.arg2) == 0 and len(instr.arg3) != 0:
             self.print_error("Error, wrong arguments of function!\n", 32)
 
@@ -305,7 +311,10 @@ class Interpret:
             except:
                 self.print_error("Error, constant has wrong data type!\n", 57)
         elif type_ == "string":
-            value = src
+            if src == None:
+                value = ""
+            else:
+                value = src
         elif type_ == "bool":
             try:
                 srcBool = src.lower()
@@ -732,13 +741,10 @@ class Interpret:
         self.execute()
 
     def format_string(self, string):
+        return
         regex = re.findall(r"\\[0-9]{3}", string)
         
         result = regex.split(string)
-
-        print(result)
-
-
 
     def write(self):
         argc = self.__instruction.argc()
@@ -752,16 +758,177 @@ class Interpret:
             src = type_1[src]
         else:
             src = self.get_value(type_1, src)
-        
-        if type_1 == "string" or type(src) is str:
-            src = self.format_string(src)
-        elif type(src) is bool:
+        """         if type_1 == "string" or type(src) is str:
+            src = self.format_string(src) """
+        if type(src) is bool:
             if src == True:
                 src = "true"
             else:
                 src = "false"
         
         sys.stdout.write(str(src))
+
+    def concat(self):
+        argc = self.__instruction.argc()
+
+        if argc != 3:
+            self.print_error("Error, wrong arguments on CONCAT instruction!\n", 32)
+        
+        frame, dst = self.parse_var(self.__instruction.arg1)
+        self.check_if_exists(frame, dst, "CONCAT")
+
+        type_1, src1, whatIsIt = self.parse_symb(self.__instruction.arg2)
+        if whatIsIt == "var":
+            self.check_if_exists(type_1, src1, "CONCAT")
+            src1 = type_1[src1]
+        else:
+            src1 = self.get_value(type_1, src1)
+        
+        type_2, src2, whatIsIt = self.parse_symb(self.__instruction.arg3)
+        if whatIsIt == "var":
+            self.check_if_exists(type_2, src2, "CONCAT")
+            src2 = type_2[src2]
+        else:
+            src2 = self.get_value(type_2, src2)
+
+        if type(src1) is not str or type(src2) is not str:
+            self.print_error("Error, CONCAT not concatinating strings!\n", 53)
+        
+        frame[dst] = src1 + src2
+
+        self.execute()
+
+    def strlen(self):
+        argc = self.__instruction.argc()
+
+        if argc != 2:
+            self.print_error("Error, wrong arguments on STRLEN instruction!\n", 32)
+        
+        frame, dst = self.parse_var(self.__instruction.arg1)
+        self.check_if_exists(frame, dst, "STRLEN")
+
+        type_1, src1, whatIsIt = self.parse_symb(self.__instruction.arg2)
+        if whatIsIt == "var":
+            self.check_if_exists(type_1, src1, "STRLEN")
+            src1 = type_1[src1]
+        else:
+            src1 = self.get_value(type_1, src1)
+        
+        if type(src1) is not str:
+            self.print_error("Error, STRLEN must be string!\n", 53)
+        
+        frame[dst] = len(src1)
+
+        self.execute()
+
+    def getchar(self):
+        argc = self.__instruction.argc()
+
+        if argc != 3:
+            self.print_error("Error, wrong arguments on GETCHAR instruction!\n", 32)
+
+        frame, dst = self.parse_var(self.__instruction.arg1)
+        self.check_if_exists(frame, dst, "GETCHAR")
+
+        type_1, src1, whatIsIt = self.parse_symb(self.__instruction.arg2)
+        if whatIsIt == "var":
+            self.check_if_exists(type_1, src1, "GETCHAR")
+            src1 = type_1[src1]
+        else:
+            src1 = self.get_value(type_1, src1)
+
+        if type(src1) is not str:
+            self.print_error("Error, STRI2INT <symb1> is not string!\n", 57)
+
+        type_2, index, whatIsIt = self.parse_symb(self.__instruction.arg3)
+        if whatIsIt == "var":
+            self.check_if_exists(type_2, index, "GETCHAR")
+            index = type_2[index]
+        else:
+            index = self.get_value(type_2, index)
+
+        if type(index) is not int:
+            self.print_error("Error, GETCHAR <symb2> is not int(index)!\n", 57)
+
+        if index >= len(src1) or index < 0:
+            self.print_error("Error, GETCHAR index is out of range!\n", 58)
+
+        frame[dst] = src1[index]
+
+        self.execute()
+
+    def setchar(self):
+        argc = self.__instruction.argc()
+
+        if argc != 3:
+            self.print_error("Error, wrong arguments on SETCHAR instruction!\n", 32)
+
+        frame, dst = self.parse_var(self.__instruction.arg1)
+        self.check_if_exists(frame, dst, "GETCHAR")
+
+        if type(frame[dst]) is not str:
+            self.print_error("Error, SETCHAR <var> is not string!\n", 57)
+
+        type_1, index, whatIsIt = self.parse_symb(self.__instruction.arg2)
+        if whatIsIt == "var":
+            self.check_if_exists(type_1, index, "SETCHAR")
+            index = type_1[index]
+        else:
+            index = self.get_value(type_1, index)
+
+        if type(index) is not int:
+            self.print_error("Error, SETCHAR <symb1> is not int!\n", 57)
+
+        type_2, src, whatIsIt = self.parse_symb(self.__instruction.arg3)
+        if whatIsIt == "var":
+            self.check_if_exists(type_2, src, "GETCHAR")
+            src = type_2[src]
+        else:
+            src = self.get_value(type_2, src)
+
+        if type(index) is not int:
+            self.print_error("Error, GETCHAR <symb2> is not int(index)!\n", 57)
+
+        if index >= len(frame[dst]) or index < 0 or src == "":
+            self.print_error("Error, GETCHAR index is out of range!\n", 58)
+        
+        string = list(frame[dst])
+        string[index] = src[0]
+        string = "".join(string)
+        frame[dst] = string
+
+        self.execute()
+
+    def type_(self):
+        argc = self.__instruction.argc()
+
+        if argc != 2:
+            self.print_error("Error, wrong arguments on TYPE instruction!\n", 32)
+
+        frame, dst = self.parse_var(self.__instruction.arg1)
+        self.check_if_exists(frame, dst, "TYPE")
+
+        type_, src, whatIsIt = self.parse_symb(self.__instruction.arg2)
+        if whatIsIt == "var":
+            self.check_if_exists(type_, src, "TYPE")
+            src = type_[src]
+        else:
+            src = self.get_value(type_, src)
+
+        if type(src) is int:
+            frame[dst] = "int"
+        elif type(src) is bool:
+            frame[dst] = "bool"
+        elif type(src) is str:
+            frame[dst] = "string"
+        elif type(src) is Nil:
+            frame[dst] = "nil"
+        elif type(src) is None:
+            frame[dst] = ""
+        else:
+            self.print_error("Error, TYPE error.", 53)
+        
+        self.execute()
 
     def exit_(self):
         argc = self.__instruction.argc()
@@ -866,7 +1033,7 @@ class Interpret:
         elif self.__instruction.opcode == "SETCHAR":
             self.setchar()
         elif self.__instruction.opcode == "TYPE":
-            self.type()
+            self.type_()
         elif self.__instruction.opcode == "JUMP":
             self.jump()
         elif self.__instruction.opcode == "JUMPIFEQ":
