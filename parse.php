@@ -560,6 +560,7 @@
                 case "INT2CHAR":
                 case "STRLEN":
                 case "TYPE":
+                case "NOT":
                     return Instructions::twoParamVS;
                 
                 case "READ":
@@ -574,7 +575,6 @@
                 case "EQ":
                 case "AND":
                 case "OR":
-                case "NOT":
                 case "STRI2INT":
                 case "CONCAT":
                 case "GETCHAR":
