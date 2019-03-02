@@ -320,7 +320,7 @@
             }
         }
 
-        // Checks if the current string has some bad escape sequences
+        // Checks if the current string has some incorrect escape sequences
         protected function check_string()
         {
             $string_regex = "/^string@.*/";
@@ -328,12 +328,16 @@
             $escape_regex = "/\\\[0-9]{3}/";
             $test = preg_match($escape_regex, $this->token);
             $result = preg_match($string_regex, $this->token);
+            // checks if token is string
             if($result)
             {
                 $backslashes = preg_match_all($backslash_regex, $this->token);
+                // if token has backslashes
                 if($backslashes > 0)
                 {
+                    // get count of sequences
                     $escapes = preg_match_all($escape_regex, $this->token);
+                    // if there is not same number of escapes and sequences = error
                     if($escapes != $backslashes)
                     {
                         fwrite(STDERR, "Error, wrong escape sequence!\n");

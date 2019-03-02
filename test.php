@@ -215,8 +215,8 @@
 
                 else
                 {
-                    exec("xmldiff $testname.out $testname.superdupermemexml", $output, $diff);
-                    if($diff == "0\n")
+                    exec("java -jar /pub/courses/ipp/jexamxml/jexamxml.jar $testname.out $testname.superdupermemexml /dev/null  /D /pub/courses/ipp/jexamxml/options", $output, $diff);
+		   if($diff == "0\n")
                     {
                         array_push($this->resultsParse, true);
                     }
@@ -256,42 +256,28 @@
                 if(!is_file($filename))
                 {
                     $creator = fopen($filename, "a");
-                    fwrite($creator, "0");
+                    fwrite($creator, "0\n");
                     fclose($creator);
                 }
 
                 if(!$this->intOnly or ($this->intOnly == $this->parseOnly))
                 {
-                    $command = "php " . $this->parser . " < " . $i . ".src" . " > " . $i . ".superdupermemexml 2>&1";
+                    $command = "php7.3 " . $this->parser . "<" . $i . ".src" . ">" . $i . ".superdupermemexml 2>&1";
                     exec($command, $output, $retval);
                     
-                    if($retval != "0\n")
+                    shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
+                    if($this->intOnly == $this->parseOnly && $retval == "0\n")
                     {
-                        shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
-                    }
-                    else if($this->intOnly == $this->parseOnly)
-                    {
-                        $command = "python3 " . $this->interpret . " --input=$i.in" . " < " . $i . ".superdupermemexml" . " > " . $i . ".superdupermemeint 2>&1";
+                        $command = "python3 " . $this->interpret . " --input=$i.in" . "<" . $i . ".superdupermemexml" . ">" . $i . ".superdupermemeint 2>&1";
                         exec($command, $output, $retval);
                         
-                        if($retval != "0\n")
-                        {
-                            shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
-                        }
-                        else
-                        {
-                            shell_exec("echo -n \"0\" > $i.superdupermemeretval");
-                        }
-                    }
-                    else
-                    {
-                        shell_exec("echo -n \"0\" > $i.superdupermemeretval");
+                        shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
                     }
                 }
 
                 else if(!$this->parseOnly)
                 {
-                    $command = "python3 " . $this->interpret . "--input=$i.in" . " < " . $i . ".src" . " > " . $i . ".superdupermemeint 2>&1";
+                    $command = "python3 " . $this->interpret . "--input=$i.in" . "<" . $i . ".src" . ">" . $i . ".superdupermemeint 2>&1";
                     exec($command, $output, $retval);
                     
                     if($retval != "0\n")
@@ -301,7 +287,6 @@
                 }
             }
             $this->compare_results();
-
         }
 
         public function print_result()
@@ -405,8 +390,12 @@
                 {
                     exec("rm $filename.superdupermemexml");
                 }
-                
-                
+
+		        if(is_file("$filename.out.log"))
+		        {
+		            exec("rm $filename.out.log");
+		        }
+                 
                 exec("rm $filename.superdupermemeretval");
             }
         }
