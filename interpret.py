@@ -246,7 +246,7 @@ class Interpret:
 
         var = arg[1]
 
-        regex = re.compile(r"^TF@[a-zA-Z0-9_\-$&%*!?]+$|^LF@[a-zA-Z0-9_\-$&%*!?]+$|^GF@[a-zA-Z0-9_\-$&%*!?]+$")
+        regex = re.compile(r"^TF@[a-zA-Z_\-$&%*!?]{1}[a-zA-Z0-9_\-$&%*!?]*$|^LF@[a-zA-Z_\-$&%*!?]{1}[a-zA-Z0-9_\-$&%*!?]*$|^GF@[a-zA-Z_\-$&%*!?]{1}[a-zA-Z0-9_\-$&%*!?]*$")
         result = regex.search(var)
 
         if result == None:
@@ -314,7 +314,7 @@ class Interpret:
             if src == None:
                 value = ""
             else:
-                value = src
+                value = self.format_string(src)
         elif type_ == "bool":
             try:
                 srcBool = src.lower()
@@ -363,13 +363,8 @@ class Interpret:
 
             frame[dest] = value
         
-        
-
-    
     def createframe(self):
         self._tf = {}
-
-        
 
     def pushframe(self):
         if self._tf == None:
@@ -381,8 +376,6 @@ class Interpret:
         self._lf = self._tf
         self._tf = None
 
-        
-
     def popframe(self):
         if self._lf == None:
             self.print_error("Error, no frame to pop!\n", 55)
@@ -393,8 +386,6 @@ class Interpret:
             self._lf = self.__frameStack.pop()
         else:
             self._lf = None
-
-        
 
     def defvar(self):
         argc = self.__instruction.argc()
@@ -411,9 +402,6 @@ class Interpret:
         
         frame[dest] = None
         
-        
-            
-
     def call(self):
         labName = self.parse_label(self.__instruction.arg1)
 
@@ -425,15 +413,11 @@ class Interpret:
         self.__callStack.push(self.__order)
         self.__order = order
 
-        
-
     def return_(self):
         if self.__callStack.is_empty():
             self.print_error("Error, RETURN there is nowhere to return!\n", 56)
         
         self.__order = self.__callStack.pop()
-
-        
 
     def pushs(self):
         argc = self.__instruction.argc()
@@ -453,8 +437,6 @@ class Interpret:
 
             self.__dataStack.push(value)
 
-        
-
     def pops(self):
         argc = self.__instruction.argc()
 
@@ -469,8 +451,6 @@ class Interpret:
         self.check_if_exists(frame, dest, "POPS")
         
         frame[dest] = self.__dataStack.pop()
-
-        
 
     def arithmetic(self, op):
         argc = self.__instruction.argc()
@@ -497,13 +477,13 @@ class Interpret:
 
         try:
             if op == "ADD":
-                frame[dest] = src1 + src2
+                frame[dst] = src1 + src2
             elif op == "SUB":
-                frame[dest] = src1 - src2
+                frame[dst] = src1 - src2
             elif op == "MUL":
-                frame[dest] = src1 * src2
+                frame[dst] = src1 * src2
             elif op == "IDIV":
-                frame[dest] = src1 // src2
+                frame[dst] = src1 // src2
 
         except ZeroDivisionError:
             self.print_error("Error, IDIV division by zero!\n", 57)
@@ -572,8 +552,6 @@ class Interpret:
 
         frame[dst] = source
 
-        
-
     def stri2int(self):
         argc = self.__instruction.argc()
 
@@ -608,8 +586,6 @@ class Interpret:
 
         frame[dst] = ord(src1[index]) 
 
-        
-
     def read(self):
         argc = self.__instruction.argc()
 
@@ -623,22 +599,15 @@ class Interpret:
         # FIXME
         if self.__input == "STDIN":
             value = input()
-            value = value[:len(value) - 1]
-            print(value)
             value = self.get_value(dataType, value)
         else:
             value = self.__input.readline()
             value = self.get_value(dataType, value)
         
         frame[dst] = value
-
-        
-
+    
     def format_string(self, string):
-        return
-        regex = re.findall(r"\\[0-9]{3}", string)
-        
-        result = regex.split(string)
+        return re.sub(r"\\(\d\d\d)", lambda x: chr(int(x.group(1), 10)), string)
 
     def write(self):
         argc = self.__instruction.argc()
@@ -652,17 +621,15 @@ class Interpret:
             src = type_1[src]
         else:
             src = self.get_value(type_1, src)
-        """         if type_1 == "string" or type(src) is str:
-            src = self.format_string(src) """
+        if type_1 == "string" or type(src) is str:
+            src = self.format_string(src)
         if type(src) is bool:
             if src == True:
                 src = "true"
             else:
                 src = "false"
         
-        print(str(src))
-
-        
+        print(str(src), end="")
 
     def concat(self):
         argc = self.__instruction.argc()
@@ -692,8 +659,6 @@ class Interpret:
         
         frame[dst] = src1 + src2
 
-        
-
     def strlen(self):
         argc = self.__instruction.argc()
 
@@ -715,8 +680,6 @@ class Interpret:
         
         frame[dst] = len(src1)
 
-        
-
     def getchar(self):
         argc = self.__instruction.argc()
 
@@ -734,7 +697,7 @@ class Interpret:
             src1 = self.get_value(type_1, src1)
 
         if type(src1) is not str:
-            self.print_error("Error, STRI2INT <symb1> is not string!\n", 57)
+            self.print_error("Error, GETCHAR <symb1> is not string!\n", 57)
 
         type_2, index, whatIsIt = self.parse_symb(self.__instruction.arg3)
         if whatIsIt == "var":
@@ -751,8 +714,6 @@ class Interpret:
 
         frame[dst] = src1[index]
 
-        
-
     def setchar(self):
         argc = self.__instruction.argc()
 
@@ -760,7 +721,7 @@ class Interpret:
             self.print_error("Error, wrong arguments on SETCHAR instruction!\n", 32)
 
         frame, dst = self.parse_var(self.__instruction.arg1)
-        self.check_if_exists(frame, dst, "GETCHAR")
+        self.check_if_exists(frame, dst, "SETCHAR")
 
         if type(frame[dst]) is not str:
             self.print_error("Error, SETCHAR <var> is not string!\n", 57)
@@ -777,23 +738,21 @@ class Interpret:
 
         type_2, src, whatIsIt = self.parse_symb(self.__instruction.arg3)
         if whatIsIt == "var":
-            self.check_if_exists(type_2, src, "GETCHAR")
+            self.check_if_exists(type_2, src, "SETCHAR")
             src = type_2[src]
         else:
             src = self.get_value(type_2, src)
 
         if type(index) is not int:
-            self.print_error("Error, GETCHAR <symb2> is not int(index)!\n", 57)
+            self.print_error("Error, SETCHAR <symb2> is not int(index)!\n", 57)
 
         if index >= len(frame[dst]) or index < 0 or src == "":
-            self.print_error("Error, GETCHAR index is out of range!\n", 58)
+            self.print_error("Error, SETCHAR index is out of range!\n", 58)
         
         string = list(frame[dst])
         string[index] = src[0]
         string = "".join(string)
         frame[dst] = string
-
-        
 
     def type_(self):
         argc = self.__instruction.argc()
@@ -831,6 +790,8 @@ class Interpret:
             self.print_error("Error, wrong arguments on JUMP instruction!\n", 32)
 
         label = self.parse_label(self.__instruction.arg1)
+        if label not in self.__labels:
+            self.print_error("Error, label does not exist!\n", 52)
 
         self.__order = self.__labels[label]
 
@@ -838,7 +799,7 @@ class Interpret:
         argc = self.__instruction.argc()
 
         if argc != 3:
-            self.print_error("Error, wrong arguments on JUMPIFEQ instruction!\n", 32)
+            self.print_error("Error, wrong arguments on JUMPIFEQ or JUMPIFNEQ instruction!\n", 32)
 
         label = self.parse_label(self.__instruction.arg1)
         self.check_if_label_exists(label, "JUMPIFEQ")
@@ -991,7 +952,6 @@ class Interpret:
             self.get_instruction()
 
         
-
 interpret = Interpret()
 
 interpret.parse_args()

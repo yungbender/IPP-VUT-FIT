@@ -306,7 +306,7 @@
         // from specification, using regular expressions
         protected function check_var()
         {
-            $regex = "/^TF@[a-zA-Z0-9_\-$&%*!?]+$|^LF@[a-zA-Z0-9_\-$&%*!?]+$|^GF@[a-zA-Z0-9_\-$&%*!?]+$/";
+            $regex = "/^TF@[a-zA-Z_\-$&%*!?]{1}[a-zA-Z0-9_\-$&%*!?]*$|^LF@[a-zA-Z_\-$&%*!?]{1}[a-zA-Z0-9_\-$&%*!?]*$|^GF@[a-zA-Z_\-$&%*!?]{1}[a-zA-Z0-9_\-$&%*!?]*$/";
 
             $result = preg_match($regex, $this->token);
 
@@ -322,7 +322,7 @@
         // from specification, using regular expressions
         protected function check_symb()
         {
-            $var_regex = "/^TF@[a-zA-Z0-9_\-$&%*!?]+$|^LF@[a-zA-Z0-9_\-$&%*!?]+$|^GF@[a-zA-Z0-9_\-$&%*!?]+$/";
+            $var_regex = "/^TF@[a-zA-Z_\-$&%*!?]{1}[a-zA-Z0-9_\-$&%*!?]*$|^LF@[a-zA-Z_\-$&%*!?]{1}[a-zA-Z0-9_\-$&%*!?]*$|^GF@[a-zA-Z_\-$&%*!?]{1}[a-zA-Z0-9_\-$&%*!?]*$/";
 
             $result = preg_match($var_regex, $this->token);
 
@@ -349,7 +349,7 @@
         // from specification, using regular expressions
         protected function check_label()
         {
-            $regex = "/^[a-zA-Z0-9_\-$&%*!?]+$/";
+            $regex = "/^[a-zA-Z_\-$&%*!?]{1}[a-zA-Z0-9_\-$&%*!?]*$/";
 
             $result = preg_match($regex, $this->token);
 
