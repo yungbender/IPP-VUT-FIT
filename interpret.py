@@ -596,7 +596,7 @@ class Interpret:
         self.check_if_exists(frame, dst, "READ")
 
         dataType = self.parse_type(self.__instruction.arg2)
-        # FIXME
+        # FIXME!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         if self.__input == "STDIN":
             value = input()
             value = self.get_value(dataType, value)
