@@ -66,6 +66,7 @@
             if(count($path) != 1)
             {
                 fwrite(STDERR, "Error, unknwon parameters!\n");
+                fwrite(STDERR, "\n");
                 exit(10);
             }
             $path = explode("=", $path[1]);
@@ -159,7 +160,7 @@
             if($this->file == false)
             {
                 fwrite(STDERR, "Error, creating the statistics file!\n");
-                exit(23);
+                exit(12);
             }
 
             while(!empty($this->order))
@@ -314,7 +315,35 @@
             {
                 fwrite(STDERR, "Error, expecting <var> function parameter! Line: ");
                 fwrite(STDERR, $this->lineCount);
+                fwrite(STDERR, "\n");
                 exit(23);
+            }
+        }
+
+        // Checks if the current string has some incorrect escape sequences
+        protected function check_string()
+        {
+            $string_regex = "/^string@.*/";
+            $backslash_regex = "/\\\/";
+            $escape_regex = "/\\\[0-9]{3}/";
+            $test = preg_match($escape_regex, $this->token);
+            $result = preg_match($string_regex, $this->token);
+            // checks if token is string
+            if($result)
+            {
+                $backslashes = preg_match_all($backslash_regex, $this->token);
+                // if token has backslashes
+                if($backslashes > 0)
+                {
+                    // get count of sequences
+                    $escapes = preg_match_all($escape_regex, $this->token);
+                    // if there is not same number of escapes and sequences = error
+                    if($escapes != $backslashes)
+                    {
+                        fwrite(STDERR, "Error, wrong escape sequence!\n");
+                        exit(23);
+                    }
+                }
             }
         }
 
@@ -334,6 +363,8 @@
             $val_regex = "/^int@[-+]?[0-9]+$|^bool@true$|^bool@false$|^string@.*|^nil@nil$/";
 
             $result = preg_match($val_regex, $this->token);
+
+            $this->check_string();
 
             if($result)
             {
@@ -357,6 +388,7 @@
             {
                 fwrite(STDERR, "Error, expecting <label> function parameter! Line: ");
                 fwrite(STDERR, $this->lineCount);
+                fwrite(STDERR, "\n");
                 exit(23);
             }            
         }
@@ -373,6 +405,7 @@
             {
                 fwrite(STDERR, "Error, expecting <type> function parameter! Line: ");
                 fwrite(STDERR, $this->lineCount);
+                fwrite(STDERR, "\n");
                 exit(23);
             }             
         }
@@ -495,6 +528,7 @@
             {
                 fwrite(STDERR, "Error, expecting <symb> function parameter! Line: ");
                 fwrite(STDERR, $this->lineCount);
+                fwrite(STDERR, "\n");
                 exit(23);                
             }
             else if($choice == Instructions::varr)
@@ -603,6 +637,7 @@
             {
                 fwrite(STDERR, "Error, wrong number of parameters! Line: ");
                 fwrite(STDERR, $this->lineCount);
+                fwrite(STDERR, "\n");
                 exit(23);
             }
         }
@@ -807,7 +842,7 @@
                     fwrite(STDERR, "Error! Calling undefined function! Line: ");
                     fwrite(STDERR, $this->lineCount);
                     fwrite(STDERR, "\n");
-                    exit(21);
+                    exit(22);
             }
         }
     }
