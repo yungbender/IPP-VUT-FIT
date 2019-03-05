@@ -75,7 +75,7 @@ class Interpret:
 
     """ Function prints out given error message and exits with given number. """
     def print_error(self, message, number):
-        print(message, file=sys.stderr)
+        print(message, file=sys.stderr, end="")
         sys.exit(number)
 
     """ Function parses arguments from user, and checks if arguments are written correctly. """
@@ -495,7 +495,47 @@ class Interpret:
             self.print_error("Error, IDIV division by zero!\n", 57)
         except:
             self.print_error("Error, " + op + " incorrect data types!\n", 53)
+
+    def compare(self, op):
+        argc = self.__instruction.argc()
+
+        if argc != 3:
+            self.print_error("Error, wrong arguments on " + op + " instruction!\n", 32)
                 
+        frame, dst = self.parse_var(self.__instruction.arg1)
+        self.check_if_exists(frame, dst, op)
+
+        type_1, src1, whatIsIt = self.parse_symb(self.__instruction.arg2)
+        if whatIsIt == "var":
+            self.check_if_exists(type_1, src1, op)
+            src1 = type_1[src1]
+        else:
+            src1 = self.get_value(type_1, src1)
+
+        type_2, src2, whatIsIt = self.parse_symb(self.__instruction.arg3)
+        if whatIsIt == "var":
+            self.check_if_exists(type_2, src2, op)
+            src2 = type_2[src2]
+        else:
+            src2 = self.get_value(type_2, src2)
+        
+        if type(src1) != type(src2):
+            self.print_error("Error, " + op + " incorrect data types!\n", 53)
+        
+        if (type(src1) is Nil or type(src2) is Nil) and op != "EQ":
+            self.print_error("Error, " + op + " incorrect data types!\n", 53)
+        
+        if op == "LT":
+            frame[dst] = (src1 < src2)
+        elif op == "GT":
+            frame[dst] = (src1 > src2)
+        elif op == "EQ":
+            if type(src1) is Nil and type(src2) is Nil:
+                frame[dst] = True
+                return
+
+            frame[dst] = (src1 == src2)
+
     def logical(self, op):
         argc = self.__instruction.argc()
 
@@ -1079,11 +1119,11 @@ class Interpret:
             elif self.__instruction.opcode == "IDIV":
                 self.arithmetic("IDIV")
             elif self.__instruction.opcode == "LT":
-                self.logical("LT")
+                self.compare("LT")
             elif self.__instruction.opcode == "GT":
-                self.logical("GT")
+                self.compare("GT")
             elif self.__instruction.opcode == "EQ":
-                self.logical("EQ")
+                self.compare("EQ")
             elif self.__instruction.opcode == "AND":
                 self.logical("AND")
             elif self.__instruction.opcode == "OR":
