@@ -1,6 +1,84 @@
 import sys, re
 import xml.etree.ElementTree as ET
 
+class Stats:
+    """ Represents statistics from interpretation. """
+    def __init__(self):
+        self.__insts = 0
+        self.__vars = 0
+        self.__statsRequested = False
+        self.__instsRequested = False
+        self.__varsRequested = False
+        self.__file = None
+    
+    def add_inst(self):
+        self.__insts += 1
+    
+    def sub_inst(self):
+        self.__insts -= 1
+
+    def add_var(self):
+        self.__vars += 1
+    
+    def sub_var(self):
+        self.__vars -= 1
+    
+    def args_stats(self, args):
+        argc = 0
+
+        stats_re = re.compile(r"^--stats=.*$")
+        isStats = list(filter(stats_re.search, args))
+
+        if isStats and len(isStats) == 1:
+            argc += 1
+            self.__statsRequested = True
+
+            path = isStats[0].split("=", 1)
+            self.__file = path[1]
+        elif isStats:
+            Interpret.print_error(None, "Error, wrong arguments!\n", 10)
+        
+        insts_re = re.compile(r"^--insts$")
+        isInsts = list(filter(insts_re.search, args))
+
+        if isInsts and len(isInsts) == 1 and self.__statsRequested == True:
+            argc += 1
+            self.__instsRequested = True
+        elif isInsts and (len(isInsts) != 1 or self.__statsRequested != True):
+            Interpret.print_error(None, "Error, wrong arguments!\n", 10)
+
+        vars_re = re.compile(r"^--vars$")
+        isVars = list(filter(vars_re.search, args))
+
+        if isVars and len(isVars) == 1 and self.__statsRequested == True:
+            argc += 1
+            self.__varsRequested = True
+        elif isVars and (len(isVars) != 1 or self.__statsRequested != True):
+            Interpret.print_error(None, "Error, wrong arguments!\n", 10)
+        
+        if self.__statsRequested and (self.__instsRequested == False and self.__varsRequested == False):
+            Interpret.print_error(None, "Error, wrong arguments!\n", 10)
+
+        return argc
+
+    def print_results(self):
+        if self.__statsRequested == False:
+            return
+
+        try:
+            self.__file = open(self.__file, "w")
+        except:
+            Interpret.print_error(None, "Error, cannot open stats file!\n", 12)
+    
+        if self.__instsRequested:
+            self.__file.write(str(self.__insts))
+            self.__file.write("\n")
+        
+        if self.__varsRequested:
+            self.__file.write(str(self.__vars))
+
+        self.__file.close()
+
 class Nil:
     def __init__(self):
         self._nil = "nil"
@@ -72,6 +150,9 @@ class Interpret:
         self.__instruction = None
         self.__instrCount = 0
 
+        """ Statistics class """
+        self.__stats = None
+
 
     """ Function prints out given error message and exits with given number. """
     def print_error(self, message, number):
@@ -110,6 +191,9 @@ class Interpret:
         elif is_input:
             self.print_error("Error, repeating --input argument!\n", 10)
         
+        self.__stats = Stats()
+        argc += self.__stats.args_stats(sys.argv)
+
         if argc != len(sys.argv):
             self.print_error("Error, unknown parameters used!\n", 10)
         elif self.__source == self.__input:
@@ -908,6 +992,7 @@ class Interpret:
         if type(source) is not int or not source >= 0 or not source <= 49:
             self.print_error("Error, EXIT wrong exit number!\n", 57)
         
+        self.__stats.print_results()
         sys.exit(source)
 
     def dprint(self):
@@ -1090,7 +1175,9 @@ class Interpret:
 
     def execute(self):
         self.get_instruction()
-        while self.__instruction.opcode != "EOF":   
+        while self.__instruction.opcode != "EOF":
+
+            self.__stats.add_inst()
 
             if self.__instruction.opcode == "MOVE":
                 self.move()
@@ -1101,6 +1188,7 @@ class Interpret:
             elif self.__instruction.opcode == "POPFRAME":
                 self.popframe()
             elif self.__instruction.opcode == "DEFVAR":
+                self.__stats.add_var()
                 self.defvar()
             elif self.__instruction.opcode == "CALL":
                 self.call()
@@ -1194,11 +1282,15 @@ class Interpret:
                 self.get_instruction()
                 continue
             elif self.__instruction.opcode == "EOF":
+                self.__stats.sub_inst()
                 break
             else:
                 self.print_error("Error, unknown instruction!\n", 32)
             
             self.get_instruction()
+    
+    def print_stats(self):
+        self.__stats.print_results()
 
         
 interpret = Interpret()
@@ -1208,3 +1300,4 @@ interpret.set_up()
 interpret.check_xml()
 interpret.get_labels()
 interpret.execute()
+interpret.print_stats()
