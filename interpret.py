@@ -24,6 +24,9 @@ class Stack:
 
     def get_stack(self):
         return self.__stack
+    
+    def size(self):
+        return len(self.__stack)
 
 class Instruction:
     def __init__(self):
@@ -62,7 +65,7 @@ class Interpret:
 
         """ I/O """
         self.__source = 0
-        self.__input = 0
+        self.__input = "STDIN"
 
         self.__order = 0
 
@@ -72,7 +75,7 @@ class Interpret:
 
     """ Function prints out given error message and exits with given number. """
     def print_error(self, message, number):
-        sys.stderr.write(message)
+        print(message, file=sys.stderr)
         sys.exit(number)
 
     """ Function parses arguments from user, and checks if arguments are written correctly. """
@@ -112,22 +115,25 @@ class Interpret:
         elif self.__source == self.__input:
             self.print_error("Error, at least 1 argument (source/file) must be used!\n", 10)
     
-    """ Method allocates stacks and opens the files for input and source. """
     def set_up(self):
+        """ Method allocates stacks and opens the files for input and source. """
         self.__dataStack = Stack()
         self.__frameStack = Stack()
         self.__callStack = Stack()
 
         try:
             self.__source = open(self.__source, "r")
+            backup = self.__source
             self.__source = self.__source.read()
+            backup.close()
 
-            self.__input = open(self.__input, "r")
+            if self.__input != "STDIN":
+                self.__input = open(self.__input, "r")
         except:
             self.print_error("Error, couldnt open source/input file!\n", 11)
     
-    """ Method parses source XML file, checks if its well-formed and checks the required head. """
     def check_xml(self):
+        """ Method parses source XML file, checks if its well-formed and checks the required head. """
         try:
             self.__source = ET.ElementTree(ET.fromstring(self.__source))
         except:
@@ -596,13 +602,29 @@ class Interpret:
         self.check_if_exists(frame, dst, "READ")
 
         dataType = self.parse_type(self.__instruction.arg2)
-        # FIXME!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
         if self.__input == "STDIN":
             value = input()
-            value = self.get_value(dataType, value)
         else:
             value = self.__input.readline()
-            value = self.get_value(dataType, value)
+            value = value[:-1]
+
+        if dataType == "int":
+            try:
+                value = int(value)
+            except:
+                value = 0
+        elif dataType == "string":
+            try:
+                value = str(value)
+            except:
+                value = ""
+        elif dataType == "bool":
+            value = value.toupper()
+            if value is "TRUE":
+                value = True
+            else:
+                value = False
         
         frame[dst] = value
     
@@ -802,7 +824,7 @@ class Interpret:
             self.print_error("Error, wrong arguments on JUMPIFEQ or JUMPIFNEQ instruction!\n", 32)
 
         label = self.parse_label(self.__instruction.arg1)
-        self.check_if_label_exists(label, "JUMPIFEQ")
+        self.check_if_label_exists(label, type_)
 
         type_1, src1, whatIsIt = self.parse_symb(self.__instruction.arg2)
         if whatIsIt == "var":
@@ -822,10 +844,10 @@ class Interpret:
             self.print_error("Error, JUMPIFEQ are not the same type!\n", 53)
         
         if type_ == "JUMPIFEQ":
-            if src1 == src2:
+            if src1 == src2 or (type(src1) is Nil and type(src2) is Nil):
                 self.__order = self.__labels[label]
         elif type_ == "JUMPIFNEQ":
-            if src1 != src2:
+            if src1 != src2 and (type(src1) is not Nil or type(src2) is not Nil):
                 self.__order = self.__labels[label]
 
     def exit_(self):
@@ -861,6 +883,10 @@ class Interpret:
         sys.stderr.write(frame[src])
 
     def break_(self):
+        argc = self.__instruction.argc()
+        if argc != 0:
+            self.print_error("Error, wrong arguments on BREAK instruction!\n", 32)
+
         sys.stderr.write("DEBUG INFO:\n")
         sys.stderr.write("order = " + str(self.__order) + "\n")
         sys.stderr.write("GF = " + str(self.__gf) + "\n")
@@ -868,6 +894,159 @@ class Interpret:
         sys.stderr.write("TF = " + str(self.__tf) + "\n")
         sys.stderr.write("dataStack = " + str(self.__dataStack.get_stack()) + "\n")
         sys.stderr.write("callStack = " + str(self.__callStack.get_stack()) + " (These are order numbers, to which instruction will interpret RETURN)" + "\n\n")
+
+    """ STACK """
+    def clears(self):
+        argc = self.__instruction.argc()
+        if argc != 0:
+            self.print_error("Error, wrong arguments on CLEARS instruction!\n", 32)
+
+        self.__dataStack = Stack()
+    
+    def arithmetics(self, op):
+        argc = self.__instruction.argc()
+
+        if argc != 0:
+            self.print_error("Error, wrong arguments on" + op + " instruction!\n", 32)
+        
+        if self.__dataStack.size() < 2:
+            self.print_error("Error, " + op + " not enough vars on stack!\n", 56)
+        
+        src2 = self.__dataStack.pop()
+        src1 = self.__dataStack.pop()
+
+        if type(src1) is not int or type(src2) is not int:
+            self.print_error("Error, " + op + " not int types!\n", 53)
+        
+        try:
+            if op == "ADDS":
+                self.__dataStack.push(src1 + src2)
+            elif op == "SUBS":
+                self.__dataStack.push(src1 - src2)
+            elif op == "MULS":
+                self.__dataStack.push(src1 * src2)
+            elif op == "IDIVS":
+                self.__dataStack.push(src1 // src2)
+        except ZeroDivisionError:
+            self.print_error("Error, IDIVS division by zero!\n", 57)
+        
+    def compares(self, op):
+        argc = self.__instruction.argc()
+
+        if argc != 0:
+            self.print_error("Error, wrong arguments on" + op + " instruction!\n", 32)
+        
+        if self.__dataStack.size() < 2:
+            self.print_error("Error, " + op + " not enough vars on stack!\n", 56)
+        
+        src2 = self.__dataStack.pop()
+        src1 = self.__dataStack.pop()
+
+        if type(src1) is Nil and op != "EQS":
+            self.print_error("Error, " + op + " wrong data type!\n", 53)
+        elif type(src2) is Nil and op != "EQS":
+            self.print_error("Error, " + op + " wrong data type!\n", 53)
+        elif type(src1) != type(src2):
+            self.print_error("Error, " + op + " not same data types!\n", 53)
+
+        if op == "LTS":
+            self.__dataStack.push((src1 < src2))
+        elif op == "GTS":
+            self.__dataStack.push((src1 > src2))
+        elif op == "EQS":
+            if type(src1) == Nil and type(src2) == Nil:
+                self.__dataStack.push(True)
+                return
+
+            self.__dataStack.push((src1 == src2))
+
+    def logicals(self, op):
+        argc = self.__instruction.argc()
+        if argc != 0:
+            self.print_error("Error, wrong arguments on " + op + " instruction!\n", 32)
+        
+        if self.__dataStack.size() < 2 and op != "NOTS":
+            self.print_error("Error, " + op + " not enough vars on stack!\n", 56)
+        elif self.__dataStack.size() < 1:
+            self.print_error("Error, " + op + " not enough vars on stack!\n", 56)
+        
+        src2 = self.__dataStack.pop()
+        if op != "NOTS":
+            src1 = self.__dataStack.pop()
+
+        if type(src2) is not bool:
+            self.print_error("Error, " + op + " not bool types!\n", 53)
+        if op != "NOTS":
+            if type(src1) is not bool:
+                self.print_error("Error, " + op + " not bool types!\n", 53)
+    
+        if op == "ANDS":
+            self.__dataStack.push(src1 and src2)
+        elif op == "ORS":
+            self.__dataStack.push(src1 or src2)
+        elif op == "NOTS":
+            self.__dataStack.push(not src2)
+
+    def int2chars(self):
+        argc = self.__instruction.argc()
+        if argc != 0:
+            self.print_error("Error, wrong arguments on INT2CHARS instruction!\n", 32)
+
+        if self.__dataStack.size() < 1:
+            self.print_error("Error, INT2CHARS not enough vars on stack!\n", 56)
+        
+        src1 = self.__dataStack.pop()
+
+        if type(src1) is not int:
+            self.print_error("Error, INT2CHARS not int!\n", 53)
+        
+        try:
+            self.__dataStack.push(chr(src1))
+        except:
+            self.print_error("Error, INT2CHARS int is out of range!\n", 58)
+    
+    def stri2ints(self):
+        argc = self.__instruction.argc()
+        if argc != 0:
+            self.print_error("Error, wrong arguments on STRI2INTS instruction!\n", 32)
+
+        if self.__dataStack.size() < 2:
+            self.print_error("Error, STRI2INTS not enough vars on stack!\n", 56)
+        
+        index = self.__dataStack.pop()
+        src = self.__dataStack.pop()
+
+        if type(src) is not str or type(index) is not int:
+            self.print_error("Error, STRI2INTS wrong data types!\n", 53)
+        
+        if index >= len(src) or index < 0:
+            self.print_error("Error, STRI2INTS index out of range!\n", 58)
+        
+        self.__dataStack.push(ord(src[index]))
+
+    def jumpeqs(self, op):
+        argc = self.__instruction.argc()
+        if argc != 1:
+            self.print_error("Error, wrong arguments on" + op + " instruction!\n", 32)
+        
+        if self.__dataStack.size() < 2:
+            self.print_error("Error, " + op + " not enough vars on stack!\n", 56)
+        
+        label = self.parse_label(self.__instruction.arg1)
+        self.check_if_label_exists(label, op)
+        
+        src2 = self.__dataStack.pop()
+        src1 = self.__dataStack.pop()
+
+        if type(src1) != type(src2):
+            self.print_error("Error, " + op + " parameters are not the same data type!\n" , 53)
+        
+        if op == "JUMPIFEQS":
+            if src1 == src2 or (type(src1) is Nil and type(src2) is Nil):
+                self.__order = self.__labels[label]
+        elif op == "JUMPIFNEQS":
+            if src1 != src2 and (type(src2) is not Nil and type(src1) is not Nil):
+                self.__order = self.__labels[label]
 
     def execute(self):
         self.get_instruction()
@@ -941,6 +1120,36 @@ class Interpret:
                 self.dprint()
             elif self.__instruction.opcode == "BREAK":
                 self.break_()
+            elif self.__instruction.opcode == "CLEARS":
+                self.clears()
+            elif self.__instruction.opcode == "ADDS":
+                self.arithmetics("ADDS")
+            elif self.__instruction.opcode == "SUBS":
+                self.arithmetics("SUBS")
+            elif self.__instruction.opcode == "MULS":
+                self.arithmetics("MULS")
+            elif self.__instruction.opcode == "IDIVS":
+                self.arithmetics("IDIVS")
+            elif self.__instruction.opcode == "LTS":
+                self.compares("LTS")
+            elif self.__instruction.opcode == "GTS":
+                self.compares("GTS")
+            elif self.__instruction.opcode == "EQS":
+                self.compares("EQS")
+            elif self.__instruction.opcode == "ANDS":
+                self.logicals("ANDS")
+            elif self.__instruction.opcode == "ORS":
+                self.logicals("ORS")
+            elif self.__instruction.opcode == "NOTS":
+                self.logicals("NOTS")
+            elif self.__instruction.opcode == "INT2CHARS":
+                self.int2chars()
+            elif self.__instruction.opcode == "STRI2INTS":
+                self.stri2ints()
+            elif self.__instruction.opcode == "JUMPIFEQS":
+                self.jumpeqs("JUMPIFEQS")
+            elif self.__instruction.opcode == "JUMPIFNEQS":
+                self.jumpeqs("JUMPIFNEQS")
             elif self.__instruction.opcode == "LABEL":
                 self.get_instruction()
                 continue
