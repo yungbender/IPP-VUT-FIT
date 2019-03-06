@@ -202,7 +202,7 @@
 
                 if(!$this->parseOnly or ($this->parseOnly == $this->intOnly))
                 {
-                    exec("diff $testname.out $testname.superdupermemeint", $output, $diff);
+                    exec("diff -b $testname.out $testname.superdupermemeint", $output, $diff);
                     if($diff == "0\n")
                     {
                         array_push($this->resultsInt, true);
@@ -226,7 +226,7 @@
                     }
                 }
 
-                exec("diff $testname.rc $testname.superdupermemeretval", $output, $diff);
+                exec("diff -b $testname.rc $testname.superdupermemeretval", $output, $diff);
                 if($diff == "0\n")
                 {
                     array_push($this->resultsRetval, true);
@@ -256,7 +256,7 @@
                 if(!is_file($filename))
                 {
                     $creator = fopen($filename, "a");
-                    fwrite($creator, "0\n");
+                    fwrite($creator, "0");
                     fclose($creator);
                 }
 
@@ -277,13 +277,10 @@
 
                 else if(!$this->parseOnly)
                 {
-                    $command = "python3 " . $this->interpret . "--input=$i.in" . "<" . $i . ".src" . ">" . $i . ".superdupermemeint 2>&1";
+                    $command = "python3 " . $this->interpret . " --input=$i.in" . "<" . $i . ".src" . ">" . $i . ".superdupermemeint 2>&1";
                     exec($command, $output, $retval);
                     
-                    if($retval != "0\n")
-                    {
-                        shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
-                    }
+                    shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
                 }
             }
             $this->compare_results();
@@ -413,7 +410,7 @@
 
     $tester->print_hints();
 
-    $tester->clean_up();
+    #$tester->clean_up();
 
 
     #$handle = fopen($my_file, 'a') or die('Cannot open file: '.$my_file);
