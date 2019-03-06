@@ -200,16 +200,40 @@
             {
                 $testname = substr($i, 0, -4);
 
+                exec("diff -b $testname.rc $testname.superdupermemeretval", $output, $diff);
+                if($diff == "0\n")
+                {
+                    array_push($this->resultsRetval, "true");
+                }
+                else
+                {
+                    array_push($this->resultsRetval, "false");
+                }
+
+                $retval = file_get_contents("$testname.rc");
+                if($retval[0] != "0")
+                {
+                    if(!$this->parseOnly or ($this->parseOnly == $this->intOnly))
+                    {
+                        array_push($this->resultsInt, "N/A");
+                    }
+                    else
+                    {
+                        array_push($this->resultsParse, "N/A");
+                    }
+                    continue;
+                } 
+
                 if(!$this->parseOnly or ($this->parseOnly == $this->intOnly))
                 {
                     exec("diff -b $testname.out $testname.superdupermemeint", $output, $diff);
                     if($diff == "0\n")
                     {
-                        array_push($this->resultsInt, true);
+                        array_push($this->resultsInt, "true");
                     }
                     else
                     {
-                        array_push($this->resultsInt, false);
+                        array_push($this->resultsInt, "false");
                     }
                 }
 
@@ -218,23 +242,14 @@
                     exec("java -jar /pub/courses/ipp/jexamxml/jexamxml.jar $testname.out $testname.superdupermemexml /dev/null  /D /pub/courses/ipp/jexamxml/options", $output, $diff);
 		   if($diff == "0\n")
                     {
-                        array_push($this->resultsParse, true);
+                        array_push($this->resultsParse, "true");
                     }
                     else
                     {
-                        array_push($this->resultsParse, false);
+                        array_push($this->resultsParse, "false");
                     }
                 }
 
-                exec("diff -b $testname.rc $testname.superdupermemeretval", $output, $diff);
-                if($diff == "0\n")
-                {
-                    array_push($this->resultsRetval, true);
-                }
-                else
-                {
-                    array_push($this->resultsRetval, false);
-                }
 
             }
         }
@@ -277,7 +292,7 @@
 
                 else if(!$this->parseOnly)
                 {
-                    $command = "python3 " . $this->interpret . " --input=$i.in" . "<" . $i . ".src" . ">" . $i . ".superdupermemeint 2>&1";
+                    $command = "python3.6 " . $this->interpret . " --input=$i.in" . "<" . $i . ".src" . ">" . $i . ".superdupermemeint 2>&1";
                     exec($command, $output, $retval);
                     
                     shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
@@ -322,29 +337,36 @@
                 print "<th style=\"font-size:10px\">$file</th>";
                 if(!$this->parseOnly or ($this->parseOnly == $this->intOnly))
                 {
-                    if($this->resultsInt[$i] == true)
+                    if($this->resultsInt[$i] == "N/A")
+                    {
+                        print "<th style=\"color:white\"> N/A </th>";
+                    }
+                    else if($this->resultsInt[$i] == "true")
                     {
                         print "<th style=\"color:green\"> Success </th>";
                     }
-                    else
+                    else if($this->resultsInt[$i] == "false")
                     {
                         print "<th style=\"color:red\"> Failed </th>";
                     }
                 }
                 else if(!$this->intOnly)
                 {
-                    if($this->resultsParse[$i] == true)
+                    if($this->resultsParse[$i] == "N/A")
+                    {
+                        print "<th style=\"color:white\"> N/A </th>";
+                    }
+                    else if($this->resultsParse[$i] == "true")
                     {
                         print "<th style=\"color:green\"> Success </th>";
                     }
-                    else
+                    else if($this->resultsParse[$i] == "false")
                     {
                         print "<th style=\"color:red\"> Failed </th>";
                     }
                 }
 
-
-                if($this->resultsRetval[$i] == true)
+                if($this->resultsRetval[$i] == "true")
                 {
                     print "<th style=\"color:green\"> Success </th>";
                 }
@@ -410,7 +432,7 @@
 
     $tester->print_hints();
 
-    #$tester->clean_up();
+    $tester->clean_up();
 
 
     #$handle = fopen($my_file, 'a') or die('Cannot open file: '.$my_file);

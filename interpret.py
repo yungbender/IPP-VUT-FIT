@@ -376,8 +376,16 @@ class Interpret:
     def parse_label(self, arg):
         if len(arg) != 2:
             self.print_error("Error, expecting <label>!\n", 32)
+        
+        label = arg[1]
+        
+        regex = re.compile(r"^[a-zA-Z_\-$&%*!?]{1}[a-zA-Z0-9_\-$&%*!?]*$")
+        result = regex.search(label)
 
-        return arg[1]
+        if result == None:
+            self.print_error("Error, expecting <label>!\n", 32)
+        
+        return label
 
     def parse_type(self, arg):
         if len(arg) != 2:
@@ -433,7 +441,6 @@ class Interpret:
 
     def move(self):
         argc = self.__instruction.argc()
-
         if argc != 2:
             self.print_error("Error, wrong arguments on MOVE instructions!\n", 32)
 
@@ -454,32 +461,43 @@ class Interpret:
             frame[dest] = value
         
     def createframe(self):
-        self._tf = {}
+        argc = self.__instruction.argc()
+        if argc != 0:
+            self.print_error("Error, wrong arguments on CREATEFRAME instructions!\n", 32)
+
+        self.__tf = {}
 
     def pushframe(self):
-        if self._tf == None:
+        argc = self.__instruction.argc()
+        if argc != 0:
+            self.print_error("Error, wrong arguments on PUSHFRAME instructions!\n", 32)
+
+        if self.__tf == None:
             self.print_error("Error, trying to push undefined TF!\n", 55)
         
-        if self._lf != None:
+        if self.__lf != None:
             self.__frameStack.push(self.__lf)
         
-        self._lf = self._tf
-        self._tf = None
+        self.__lf = self.__tf
+        self.__tf = None
 
     def popframe(self):
-        if self._lf == None:
+        argc = self.__instruction.argc()
+        if argc != 0:
+            self.print_error("Error, wrong arguments on POPFRAME instructions!\n", 32)
+
+        if self.__lf == None:
             self.print_error("Error, no frame to pop!\n", 55)
         
-        self._tf = self._lf
+        self.__tf = self.__lf
 
         if not self.__frameStack.is_empty:
-            self._lf = self.__frameStack.pop()
+            self.__lf = self.__frameStack.pop()
         else:
-            self._lf = None
+            self.__lf = None
 
     def defvar(self):
         argc = self.__instruction.argc()
-
         if argc != 1:
             self.print_error("Error, wrong arguments on DEFVAR instruction!\n", 32)
 
@@ -493,8 +511,12 @@ class Interpret:
         frame[dest] = None
         
     def call(self):
-        labName = self.parse_label(self.__instruction.arg1)
+        argc = self.__instruction.argc()
+        if argc != 1:
+            self.print_error("Error, wrong arguments on CALL instruction!\n", 32)
 
+        labName = self.parse_label(self.__instruction.arg1)
+        
         if not labName in self.__labels:
             self.print_error("Error, CALL label does not exist!\n", 52)
         
@@ -504,6 +526,10 @@ class Interpret:
         self.__order = order
 
     def return_(self):
+        argc = self.__instruction.argc()
+        if argc != 0:
+            self.print_error("Error, wrong arguments on RETURN instruction!\n", 32)
+
         if self.__callStack.is_empty():
             self.print_error("Error, RETURN there is nowhere to return!\n", 56)
         
@@ -511,7 +537,6 @@ class Interpret:
 
     def pushs(self):
         argc = self.__instruction.argc()
-
         if argc != 1:
             self.print_error("Error, wrong arguments on PUSHS instruction!\n", 32)
         
@@ -529,7 +554,6 @@ class Interpret:
 
     def pops(self):
         argc = self.__instruction.argc()
-
         if argc != 1:
             self.print_error("Error, wrong arguments on POPS instruction!\n", 32)
 
@@ -1032,7 +1056,7 @@ class Interpret:
         argc = self.__instruction.argc()
 
         if argc != 0:
-            self.print_error("Error, wrong arguments on" + op + " instruction!\n", 32)
+            self.print_error("Error, wrong arguments on " + op + " instruction!\n", 32)
         
         if self.__dataStack.size() < 2:
             self.print_error("Error, " + op + " not enough vars on stack!\n", 56)
