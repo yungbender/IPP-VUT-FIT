@@ -78,14 +78,15 @@
                 
                 $path = explode("=", $directory, 2);
                 $path = $path[1];
-
+                
+                $path = realpath($path);
                 $exists = is_dir($path);
                 if($exists == false)
                 {
                     fwrite(STDERR, "Error, invalid directory!\n");
-                    exit(10);
+                    exit(11);
                 }
-
+                
                 $this->directory = realpath($path);
                 $this->parsedArgs++;
 
@@ -100,9 +101,41 @@
                 $this->directory = getcwd();
             }
 
+            
+            
+            $parseOnly = preg_grep("/^--parse-only$/", $args);
+            if(!empty($parseOnly) and count($parseOnly) == 1)
+            {
+                $this->parseOnly = true;
+                $this->parsedArgs++;
+            }
+            else if(!empty($parseOnly) and count($parseOnly) != 1)
+            {
+                fwrite(STDERR, "Error, wrong parameters!\n");
+                exit(10);
+            }
+            
+            $intOnly = preg_grep("/^--int-only$/", $args);
+            if(!empty($intOnly) and count($intOnly) == 1)
+            {
+                $this->intOnly = true;
+                $this->parsedArgs++;
+            }
+            else if(!empty($intOnly) and count($intOnly) != 1)
+            {
+                fwrite(STDERR, "Error, wrong parameters!\n");
+                exit(10);
+            }
+            
             $parser = preg_grep("/^--parse-script=.+$/", $args);
             if(!empty($parser) and count($parser) == 1)
             {
+                if($this->intOnly)
+                {
+                    fwrite(STDERR, "Error, wrong arguments!\n");
+                    exit(10);
+                }
+
                 $parser = implode($parser);
 
                 $path = explode("=", $parser, 2);
@@ -121,14 +154,21 @@
                 $this->parser = getcwd() . "/parse.php";
             }
 
+            
             $interpret = preg_grep("/^--int-script=.+$/", $args);
             if(!empty($interpret) and count($interpret) == 1)
             {
-                $interpret = implode($interpret);
+                if($this->parseOnly)
+                {
+                    fwrite(STDERR, "Error, wrong arguments!\n");
+                    exit(10);
+                }
 
+                $interpret = implode($interpret);
+                
                 $path = explode("=", $interpret, 2);
                 $path = $path[1];
-
+                
                 $this->interpret = $path;
                 $this->parsedArgs++;
             }
@@ -142,30 +182,6 @@
                 $this->interpret = getcwd() . "/interpret.py";
             }
 
-            $parseOnly = preg_grep("/^--parse-only$/", $args);
-            if(!empty($parseOnly) and count($parseOnly) == 1)
-            {
-                $this->parseOnly = true;
-                $this->parsedArgs++;
-            }
-            else if(!empty($parseOnly) and count($parseOnly) != 1)
-            {
-                fwrite(STDERR, "Error, wrong parameters!\n");
-                exit(10);
-            }
-
-            $intOnly = preg_grep("/^--int-only$/", $args);
-            if(!empty($intOnly) and count($intOnly) == 1)
-            {
-                $this->intOnly = true;
-                $this->parsedArgs++;
-            }
-            else if(!empty($intOnly) and count($intOnly) != 1)
-            {
-                fwrite(STDERR, "Error, wrong parameters!\n");
-                exit(10);
-            }
-
             if(($this->intOnly and $this->parseOnly))
             {
                 fwrite(STDERR, "Error, wrong parameters!\n");
@@ -176,9 +192,20 @@
                 fwrite(STDERR, "Error, wrong parameters!\n");
                 exit(10);
             }
+            
+            if(!is_file($this->parser))
+            {
+                fwrite(STDERR, "Error, parser not found!\n");
+                exit(11);
+            }
 
+            if(!is_file($this->interpret))
+            {
+                fwrite(STDERR, "Error, interpret not found!\n");
+                exit(11);
+            }
         }
-
+        
         public function fetch_tests()
         {
             if($this->recursive == true)
@@ -261,16 +288,29 @@
                 $i = substr($i, 0, -4);
                 $filename = $i . ".in";
                 $creator = fopen($filename, "a");
+                if($creator == false)
+                {
+                    exit(11);
+                }
                 fclose($creator);
 
                 $filename = $i . ".out";
                 $creator = fopen($filename, "a");
+                if($creator == false)
+                {
+                    exit(11);
+                }
+
                 fclose($creator);
 
                 $filename = $i . ".rc";
                 if(!is_file($filename))
                 {
                     $creator = fopen($filename, "a");
+                    if($creator == false)
+                    {
+                        exit(12);
+                    }
                     fwrite($creator, "0");
                     fclose($creator);
                 }
