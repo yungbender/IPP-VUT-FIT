@@ -48,9 +48,6 @@
         // Array which contains label names, to prevent counting
         // of nonunique labels
         protected $labelsName = [];
-        // Array which contains enums from Stats_flags, these enums
-        // hold requested elements from statistics
-        protected $order = [];
 
         // Bool which signifies if the --stats parameter was requested
         protected $request = false;
@@ -76,28 +73,24 @@
             $loc = preg_grep("/^--loc$/", $argv);
             if(count($loc) == 1)
             {
-                array_push($this->order, Stats_flags::instr);
                 $statArgc++;
             }
 
             $comments = preg_grep("/^--comments$/", $argv);
             if(count($comments) == 1)
             {
-                array_push($this->order, Stats_flags::comm);
                 $statArgc++;
             }
 
             $labels = preg_grep("/^--labels$/", $argv);
             if(count($labels) == 1)
             {
-                array_push($this->order, Stats_flags::labels);
                 $statArgc++;
             }
 
             $jumps = preg_grep("/^--jumps$/", $argv);
             if(count($jumps) == 1)
             {
-                array_push($this->order, Stats_flags::jumps);
                 $statArgc++;
             }
 
@@ -148,8 +141,8 @@
 
         // Method prints out results of statistics, if they 
         // were requested, method prints out the numbers based
-        // on array $order
-        public function print_results()
+        // on the arguments in correct order
+        public function print_results($argv)
         {
             if($this->request == false)
             {
@@ -163,31 +156,28 @@
                 exit(12);
             }
 
-            while(!empty($this->order))
+            foreach ($argv as $argument)
             {
-                $top = $this->order[0];
-                array_shift($this->order);
-
-                switch($top)
+                if ($argument == "--loc")
                 {
-                    case Stats_flags::instr:
-                        fwrite($this->file, $this->instructions);
-                        break;
-
-                    case Stats_flags::comm:
-                        fwrite($this->file, $this->comments);
-                        break;
-
-                    case Stats_flags::labels:
-                        fwrite($this->file, $this->labels);
-                        break;
-
-                    case Stats_flags::jumps:
-                        fwrite($this->file, $this->jumps);
-                        break;
+                    fwrite($this->file ,$this->instructions);
+                    fwrite($this->file, "\n");
                 }
-
-                fwrite($this->file, "\n");
+                else if($argument == "--comments")
+                {
+                    fwrite($this->file, $this->comments);
+                    fwrite($this->file, "\n");
+                }
+                else if($argument == "--labels")
+                {
+                    fwrite($this->file, $this->labels);
+                    fwrite($this->file, "\n");
+                }
+                else if($argument == "--jumps")
+                {
+                    fwrite($this->file, $this->jumps);
+                    fwrite($this->file, "\n");
+                }
             }
 
             fclose($this->file);
@@ -547,9 +537,9 @@
 
         // Calls from $stats method print_results, which prints the
         // statistics results into file
-        public function generate_results()
+        public function generate_results($argv)
         {
-            $this->stats->print_results();
+            $this->stats->print_results($argv);
         }
 
 
@@ -652,7 +642,6 @@
 
             $this->xml->endElement();
 
-            $this->parse();
         }
 
         // parses instructions with 1 parameter which is nonterminal 
@@ -668,8 +657,6 @@
             $this->generate_arg("1", "label");
             
             $this->xml->endElement();
-
-            $this->parse();
         }
 
         // parses instructions with 1 parameter which is nonterminal
@@ -684,9 +671,7 @@
             $this->check_var();
             $this->generate_arg("1", "var");
             
-            $this->xml->endElement();
-
-            $this->parse();            
+            $this->xml->endElement();           
         }
 
         // parses instructions with 1 parameter which is nonterminal 
@@ -702,8 +687,6 @@
             $this->generate_symb($result, "1");
 
             $this->xml->endElement();
-
-            $this->parse();
         }
 
         // parses instructions with 2 parameters which are in order 
@@ -723,8 +706,6 @@
             $this->generate_symb($result, "2");
 
             $this->xml->endElement();
-
-            $this->parse();
         }
 
         // parses instructions with 2 parameters which are in order
@@ -744,8 +725,6 @@
             $this->generate_arg("2", "type");
 
             $this->xml->endElement();
-
-            $this->parse();
         }
 
         // parses instructions with 3 parameters which are in order 
@@ -769,8 +748,6 @@
             $this->generate_symb($result, "3");
 
             $this->xml->endElement();
-
-            $this->parse();
         }
 
         // parses instructions with 3 parameters which are in order 
@@ -794,55 +771,56 @@
             $this->generate_symb($result, "3");
 
             $this->xml->endElement();
-
-            $this->parse();
         }
 
         // Starts the parsing process by decoding the instruction 
         // and sending the parser to the correct parsing parsing instruction
         public function parse()
         {
-            $choice = $this->decode();
-            
-            $this->instrCount++;
-            $this->stats->add_instr();
-
-            switch($choice)
+            while($this->token != Instructions::EOF)
             {
-                case Instructions::zeroParams:
-                    $this->parse_zero_fun();
-                    break;
-                case Instructions::oneParamL:
-                    $this->parse_oneL_fun();
-                    break;
-                case Instructions::oneParamS:
-                    $this->parse_oneS_fun();
-                    break;
-                case Instructions::oneParamV:
-                    $this->parse_oneV_fun();
-                    break;
-                case Instructions::twoParamVS:
-                    $this->parse_twoVS_fun();
-                    break;
-                case Instructions::twoParamVT:
-                    $this->parse_twoVT_fun();
-                    break;
-                case Instructions::threeParamLSS:
-                    $this->parse_threeLSS_fun();
-                    break;
-                case Instructions::threeParamVSS:
-                    $this->parse_threeVSS_fun();
-                    break;
-
-                case Instructions::EOF:
-                    $this->stats->sub_instr();
-                    break;
-
-                case Instructions::unknownFun:
-                    fwrite(STDERR, "Error! Calling undefined function! Line: ");
-                    fwrite(STDERR, $this->lineCount);
-                    fwrite(STDERR, "\n");
-                    exit(22);
+                $choice = $this->decode();
+                
+                $this->instrCount++;
+                $this->stats->add_instr();
+    
+                switch($choice)
+                {
+                    case Instructions::zeroParams:
+                        $this->parse_zero_fun();
+                        break;
+                    case Instructions::oneParamL:
+                        $this->parse_oneL_fun();
+                        break;
+                    case Instructions::oneParamS:
+                        $this->parse_oneS_fun();
+                        break;
+                    case Instructions::oneParamV:
+                        $this->parse_oneV_fun();
+                        break;
+                    case Instructions::twoParamVS:
+                        $this->parse_twoVS_fun();
+                        break;
+                    case Instructions::twoParamVT:
+                        $this->parse_twoVT_fun();
+                        break;
+                    case Instructions::threeParamLSS:
+                        $this->parse_threeLSS_fun();
+                        break;
+                    case Instructions::threeParamVSS:
+                        $this->parse_threeVSS_fun();
+                        break;
+    
+                    case Instructions::EOF:
+                        $this->stats->sub_instr();
+                        break;
+    
+                    case Instructions::unknownFun:
+                        fwrite(STDERR, "Error! Calling undefined function! Line: ");
+                        fwrite(STDERR, $this->lineCount);
+                        fwrite(STDERR, "\n");
+                        exit(22);
+                }
             }
         }
     }
@@ -859,5 +837,5 @@
 
     $parser->generate_eof();
 
-    $parser->generate_results();
+    $parser->generate_results($argv);
 ?>
