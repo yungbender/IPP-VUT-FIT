@@ -237,20 +237,6 @@
                     array_push($this->resultsRetval, "false");
                 }
 
-                $retval = file_get_contents("$testname.rc");
-                if($retval[0] != "0")
-                {
-                    if(!$this->parseOnly or ($this->parseOnly == $this->intOnly))
-                    {
-                        array_push($this->resultsInt, "N/A");
-                    }
-                    else
-                    {
-                        array_push($this->resultsParse, "N/A");
-                    }
-                    continue;
-                } 
-
                 if(!$this->parseOnly or ($this->parseOnly == $this->intOnly))
                 {
                     exec("diff -b $testname.out $testname.superdupermemeint", $output, $diff);
@@ -267,17 +253,22 @@
                 else
                 {
                     exec("java -jar /pub/courses/ipp/jexamxml/jexamxml.jar $testname.out $testname.superdupermemexml /dev/null  /D /pub/courses/ipp/jexamxml/options", $output, $diff);
-		   if($diff == "0\n")
+                    if($diff == "0\n")
                     {
                         array_push($this->resultsParse, "true");
                     }
                     else
                     {
+                        $outFile = file_get_contents("$testname.out");
+                        $customOut = file_get_contents("$testname.superdupermemexml");
+                        if($outFile == $customOut)
+                        {
+                            array_push($this->resultsParse, "true");
+                            continue;
+                        }
                         array_push($this->resultsParse, "false");
                     }
                 }
-
-
             }
         }
 
@@ -317,13 +308,13 @@
 
                 if(!$this->intOnly or ($this->intOnly == $this->parseOnly))
                 {
-                    $command = "php7.3 " . $this->parser . "<" . $i . ".src" . ">" . $i . ".superdupermemexml 2>&1";
+                    $command = "php7.3 " . $this->parser . "<" . $i . ".src" . ">" . $i . ".superdupermemexml";
                     exec($command, $output, $retval);
                     
                     shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
                     if($this->intOnly == $this->parseOnly && $retval == "0\n")
                     {
-                        $command = "python3 " . $this->interpret . " --input=$i.in" . "<" . $i . ".superdupermemexml" . ">" . $i . ".superdupermemeint 2>&1";
+                        $command = "python3.6 " . $this->interpret . " --input=$i.in" . "<" . $i . ".superdupermemexml" . ">" . $i . ".superdupermemeint";
                         exec($command, $output, $retval);
                         
                         shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
@@ -332,9 +323,9 @@
 
                 else if(!$this->parseOnly)
                 {
-                    $command = "python3.6 " . $this->interpret . " --input=$i.in" . "<" . $i . ".src" . ">" . $i . ".superdupermemeint 2>&1";
+                    $command = "python3.6 " . $this->interpret . " --input=$i.in" . "<" . $i . ".src" . ">" . $i . ".superdupermemeint";
                     exec($command, $output, $retval);
-                    
+
                     shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
                 }
             }
@@ -350,9 +341,20 @@
             <head>
             <title>Test results</title>
             </head>
-            <body style=\"background-color:rgb(23,24,28);color:white;font-family:arial\">
-            <h1 style=\"text-align:center;\">Test results for \"parse.php\" and \"interpret.py\"</h1>
-            <h2 style=\"text-align:center;\">$time</h2>
+            <body style=\"background-color:rgb(23,24,28);color:white;font-family:arial\">";
+            if($this->intOnly == $this->parseOnly)
+            {
+                print "<h1 style=\"text-align:center;\">Test results for \"parse.php\" and \"interpret.py\"</h1>";
+            }
+            else if($this->intOnly == TRUE)
+            {
+                print "<h1 style=\"text-align:center;\">Test results for \"interpret.py\"</h1>";
+            }
+            else if($this->parseOnly == TRUE)
+            {
+                print "<h1 style=\"text-align:center;\">Test results for \"parse.php\"</h1>";
+            }
+            print "<h2 style=\"text-align:center;\">$time</h2>
             <br>
             <table style=\"text-align:center;width:100%;font-size:12px\">\n";
             print "<tr style=\"font-size:17px\">";
@@ -369,7 +371,7 @@
             
             print "<th>Return code</th> </tr>";
             
-
+            $passedTests = 0;
             for($i = 0; $i < count($this->files); $i++)
             {
                 print "<tr>";
@@ -379,7 +381,7 @@
                 {
                     if($this->resultsInt[$i] == "N/A")
                     {
-                        print "<th style=\"color:white\"> N/A </th>";
+                        print "<th style=\"color:white\"> - </th>";
                     }
                     else if($this->resultsInt[$i] == "true")
                     {
@@ -394,7 +396,7 @@
                 {
                     if($this->resultsParse[$i] == "N/A")
                     {
-                        print "<th style=\"color:white\"> N/A </th>";
+                        print "<th style=\"color:white\"> - </th>";
                     }
                     else if($this->resultsParse[$i] == "true")
                     {
@@ -409,6 +411,20 @@
                 if($this->resultsRetval[$i] == "true")
                 {
                     print "<th style=\"color:green\"> Success </th>";
+                    if(!$this->parseOnly or ($this->parseOnly == $this->intOnly))
+                    {
+                        if($this->resultsInt[$i] == "N/A" or $this->resultsInt[$i] == "true")
+                        {
+                            $passedTests++;
+                        }
+                    }
+                    else
+                    {
+                        if($this->resultsParse[$i] == "N/A" or $this->resultsParse[$i] == "true")
+                        {
+                            $passedTests++;
+                        }
+                    }
                 }
                 else
                 {
@@ -416,12 +432,17 @@
                 }
 
                 print "</tr>";
+
             }
+
+            print "</table>";
+
+            $testsCount = count($this->files);
+            print "<p style=\"text-align:center;width:100%;font-size:14px\">Passed tests: $passedTests out of $testsCount </p>";
         }
 
         public function print_hints()
         {
-            print "</table>";
             if(!is_file($this->parser) && !$this->intOnly)
             {
                 print "<p style=\"font-size:10px;text-align:center;\">Warning! \"parser.php\" not found! All tests for parser will fail.</p>"; 
@@ -472,10 +493,5 @@
 
     $tester->print_hints();
 
-    $tester->clean_up();
-
-
-    #$handle = fopen($my_file, 'a') or die('Cannot open file: '.$my_file);
-
-    
+    #$tester->clean_up();
 ?>

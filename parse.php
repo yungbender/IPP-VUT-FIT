@@ -469,7 +469,6 @@
         // Generates the XML version header and the root program element
         public function generate_head()
         {
-            
             $this->xml->openMemory();
             $this->xml->setIndent(true);
             $this->xml->startDocument("1.0","UTF-8");

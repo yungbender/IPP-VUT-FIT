@@ -70,12 +70,14 @@ class Stats:
         except:
             Interpret.print_error(None, "Error, cannot open stats file!\n", 12)
     
-        if self.__instsRequested:
-            self.__file.write(str(self.__insts))
-            self.__file.write("\n")
-        
-        if self.__varsRequested:
-            self.__file.write(str(self.__vars))
+        for argument in sys.argv:
+            if argument == "--insts":
+                self.__file.write(str(self.__insts))
+                self.__file.write("\n")
+                    
+            elif argument == "--vars":
+                self.__file.write(str(self.__vars))
+                self.__file.write("\n")
 
         self.__file.close()
 
@@ -429,11 +431,14 @@ class Interpret:
         
         return value
 
-    def check_if_exists(self, frame, var, op):
+    def check_if_exists(self, frame, var, op, checkIfNone):
         if frame == None:
             self.print_error("Error, " + op + " destination variable frame is not initiliazed!\n", 55)
         elif not var in frame:
             self.print_error("Error, " + op + " destination variable does not exist!\n", 54)
+        elif checkIfNone:
+            if frame[var] is None:
+                self.print_error("Error, " + op + " variable is not initalized!\n", 56)
 
     def check_if_label_exists(self, label, op):
         if label not in self.__labels:
@@ -446,12 +451,12 @@ class Interpret:
 
         frame, dest = self.parse_var(self.__instruction.arg1)
 
-        self.check_if_exists(frame, dest, "MOVE")
+        self.check_if_exists(frame, dest, "MOVE", False)
 
         type_, src, whatIsIt = self.parse_symb(self.__instruction.arg2)
 
         if whatIsIt == "var":
-            self.check_if_exists(type_, src, "MOVE")
+            self.check_if_exists(type_, src, "MOVE", True)
             
             frame[dest] = type_[src]
 
@@ -543,7 +548,7 @@ class Interpret:
         type_, src, whatIsIt = self.parse_symb(self.__instruction.arg1)
 
         if whatIsIt == "var":
-            self.check_if_exists(type_, src, "PUSHS")
+            self.check_if_exists(type_, src, "PUSHS", True)
 
             self.__dataStack.push(type_[src])
 
@@ -562,7 +567,7 @@ class Interpret:
 
         frame, dest = self.parse_var(self.__instruction.arg1)
 
-        self.check_if_exists(frame, dest, "POPS")
+        self.check_if_exists(frame, dest, "POPS", False)
         
         frame[dest] = self.__dataStack.pop()
 
@@ -573,18 +578,18 @@ class Interpret:
             self.print_error("Error, wrong arguments on " + op + " instruction!\n", 32)
 
         frame, dst = self.parse_var(self.__instruction.arg1)
-        self.check_if_exists(frame, dst, op)
+        self.check_if_exists(frame, dst, op, False)
 
         type_1, src1, whatIsIt = self.parse_symb(self.__instruction.arg2)
         if whatIsIt == "var":
-            self.check_if_exists(type_1, src1, op)
+            self.check_if_exists(type_1, src1, op, True)
             src1 = type_1[src1]
         else:
             src1 = self.get_value(type_1, src1)
 
         type_2, src2, whatIsIt = self.parse_symb(self.__instruction.arg3)
         if whatIsIt == "var":
-            self.check_if_exists(type_2, src2, op)
+            self.check_if_exists(type_2, src2, op, True)
             src2 = type_2[src2]
         else:
             src2 = self.get_value(type_2, src2)
@@ -611,18 +616,18 @@ class Interpret:
             self.print_error("Error, wrong arguments on " + op + " instruction!\n", 32)
                 
         frame, dst = self.parse_var(self.__instruction.arg1)
-        self.check_if_exists(frame, dst, op)
+        self.check_if_exists(frame, dst, op, False)
 
         type_1, src1, whatIsIt = self.parse_symb(self.__instruction.arg2)
         if whatIsIt == "var":
-            self.check_if_exists(type_1, src1, op)
+            self.check_if_exists(type_1, src1, op, True)
             src1 = type_1[src1]
         else:
             src1 = self.get_value(type_1, src1)
 
         type_2, src2, whatIsIt = self.parse_symb(self.__instruction.arg3)
         if whatIsIt == "var":
-            self.check_if_exists(type_2, src2, op)
+            self.check_if_exists(type_2, src2, op, True)
             src2 = type_2[src2]
         else:
             src2 = self.get_value(type_2, src2)
@@ -653,11 +658,11 @@ class Interpret:
             self.print_error("Error, wrong arguments on " + op + " instruction!\n", 32)
 
         frame, dst = self.parse_var(self.__instruction.arg1)
-        self.check_if_exists(frame, dst, op)
+        self.check_if_exists(frame, dst, op, False)
 
         type_1, src1, whatIsIt = self.parse_symb(self.__instruction.arg2)
         if whatIsIt == "var":
-            self.check_if_exists(type_1, src1, op)
+            self.check_if_exists(type_1, src1, op, True)
             src1 = type_1[src1]
         else:
             src1 = self.get_value(type_1, src1)
@@ -665,7 +670,7 @@ class Interpret:
         if op != "NOT":
             type_2, src2, whatIsIt = self.parse_symb(self.__instruction.arg3)
             if whatIsIt == "var":
-                self.check_if_exists(type_2, src2, op)
+                self.check_if_exists(type_2, src2, op, True)
                 src2 = type_2[src2]
             else:
                 src2 = self.get_value(type_2, src2)
@@ -687,11 +692,11 @@ class Interpret:
             self.print_error("Error, wrong arguments on INT2CHAR instruction!\n", 32)
         
         frame, dst = self.parse_var(self.__instruction.arg1)
-        self.check_if_exists(frame, dst, "INT2CHAR")
+        self.check_if_exists(frame, dst, "INT2CHAR", False)
 
         type_, src, whatIsIt = self.parse_symb(self.__instruction.arg2)
         if whatIsIt == "var":
-            self.check_if_exists(type_, src, "INT2CHAR")
+            self.check_if_exists(type_, src, "INT2CHAR", True)
             try:
                 source = chr(type_[src])
             except:
@@ -713,11 +718,11 @@ class Interpret:
             self.print_error("Error, wrong arguments on STRI2INT instruction!\n", 32)
 
         frame, dst = self.parse_var(self.__instruction.arg1)
-        self.check_if_exists(frame, dst, "STRI2INT")
+        self.check_if_exists(frame, dst, "STRI2INT", False)
 
         type_1, src1, whatIsIt = self.parse_symb(self.__instruction.arg2)
         if whatIsIt == "var":
-            self.check_if_exists(type_1, src1, "STRI2INT")
+            self.check_if_exists(type_1, src1, "STRI2INT", True)
             src1 = type_1[src1]
         else:
             src1 = self.get_value(type_1, src1)
@@ -727,7 +732,7 @@ class Interpret:
 
         type_2, index, whatIsIt = self.parse_symb(self.__instruction.arg3)
         if whatIsIt == "var":
-            self.check_if_exists(type_2, index, "STRI2INT")
+            self.check_if_exists(type_2, index, "STRI2INT", True)
             index = type_2[index]
         else:
             index = self.get_value(type_2, index)
@@ -747,7 +752,7 @@ class Interpret:
             self.print_error("Error, wrong arguments on READ instruction!\n", 32)
 
         frame, dst = self.parse_var(self.__instruction.arg1)
-        self.check_if_exists(frame, dst, "READ")
+        self.check_if_exists(frame, dst, "READ", False)
 
         dataType = self.parse_type(self.__instruction.arg2)
 
@@ -755,7 +760,8 @@ class Interpret:
             value = input()
         else:
             value = self.__input.readline()
-            value = value[:-1]
+            if value.endswith("\n"):
+                value = value[:-1]
 
         if dataType == "int":
             try:
@@ -787,7 +793,7 @@ class Interpret:
 
         type_1, src, whatIsIt = self.parse_symb(self.__instruction.arg1)
         if whatIsIt == "var":
-            self.check_if_exists(type_1, src, "WRITE")
+            self.check_if_exists(type_1, src, "WRITE", True)
             src = type_1[src]
         else:
             src = self.get_value(type_1, src)
@@ -808,18 +814,18 @@ class Interpret:
             self.print_error("Error, wrong arguments on CONCAT instruction!\n", 32)
         
         frame, dst = self.parse_var(self.__instruction.arg1)
-        self.check_if_exists(frame, dst, "CONCAT")
+        self.check_if_exists(frame, dst, "CONCAT", False)
 
         type_1, src1, whatIsIt = self.parse_symb(self.__instruction.arg2)
         if whatIsIt == "var":
-            self.check_if_exists(type_1, src1, "CONCAT")
+            self.check_if_exists(type_1, src1, "CONCAT", True)
             src1 = type_1[src1]
         else:
             src1 = self.get_value(type_1, src1)
         
         type_2, src2, whatIsIt = self.parse_symb(self.__instruction.arg3)
         if whatIsIt == "var":
-            self.check_if_exists(type_2, src2, "CONCAT")
+            self.check_if_exists(type_2, src2, "CONCAT", True)
             src2 = type_2[src2]
         else:
             src2 = self.get_value(type_2, src2)
@@ -836,11 +842,11 @@ class Interpret:
             self.print_error("Error, wrong arguments on STRLEN instruction!\n", 32)
         
         frame, dst = self.parse_var(self.__instruction.arg1)
-        self.check_if_exists(frame, dst, "STRLEN")
+        self.check_if_exists(frame, dst, "STRLEN", False)
 
         type_1, src1, whatIsIt = self.parse_symb(self.__instruction.arg2)
         if whatIsIt == "var":
-            self.check_if_exists(type_1, src1, "STRLEN")
+            self.check_if_exists(type_1, src1, "STRLEN", True)
             src1 = type_1[src1]
         else:
             src1 = self.get_value(type_1, src1)
@@ -857,11 +863,11 @@ class Interpret:
             self.print_error("Error, wrong arguments on GETCHAR instruction!\n", 32)
 
         frame, dst = self.parse_var(self.__instruction.arg1)
-        self.check_if_exists(frame, dst, "GETCHAR")
+        self.check_if_exists(frame, dst, "GETCHAR", False)
 
         type_1, src1, whatIsIt = self.parse_symb(self.__instruction.arg2)
         if whatIsIt == "var":
-            self.check_if_exists(type_1, src1, "GETCHAR")
+            self.check_if_exists(type_1, src1, "GETCHAR", True)
             src1 = type_1[src1]
         else:
             src1 = self.get_value(type_1, src1)
@@ -871,7 +877,7 @@ class Interpret:
 
         type_2, index, whatIsIt = self.parse_symb(self.__instruction.arg3)
         if whatIsIt == "var":
-            self.check_if_exists(type_2, index, "GETCHAR")
+            self.check_if_exists(type_2, index, "GETCHAR", True)
             index = type_2[index]
         else:
             index = self.get_value(type_2, index)
@@ -891,14 +897,14 @@ class Interpret:
             self.print_error("Error, wrong arguments on SETCHAR instruction!\n", 32)
 
         frame, dst = self.parse_var(self.__instruction.arg1)
-        self.check_if_exists(frame, dst, "SETCHAR")
+        self.check_if_exists(frame, dst, "SETCHAR", True)
 
         if type(frame[dst]) is not str:
             self.print_error("Error, SETCHAR <var> is not string!\n", 57)
 
         type_1, index, whatIsIt = self.parse_symb(self.__instruction.arg2)
         if whatIsIt == "var":
-            self.check_if_exists(type_1, index, "SETCHAR")
+            self.check_if_exists(type_1, index, "SETCHAR", True)
             index = type_1[index]
         else:
             index = self.get_value(type_1, index)
@@ -908,7 +914,7 @@ class Interpret:
 
         type_2, src, whatIsIt = self.parse_symb(self.__instruction.arg3)
         if whatIsIt == "var":
-            self.check_if_exists(type_2, src, "SETCHAR")
+            self.check_if_exists(type_2, src, "SETCHAR", True)
             src = type_2[src]
         else:
             src = self.get_value(type_2, src)
@@ -931,11 +937,11 @@ class Interpret:
             self.print_error("Error, wrong arguments on TYPE instruction!\n", 32)
 
         frame, dst = self.parse_var(self.__instruction.arg1)
-        self.check_if_exists(frame, dst, "TYPE")
+        self.check_if_exists(frame, dst, "TYPE", False)
 
         type_, src, whatIsIt = self.parse_symb(self.__instruction.arg2)
         if whatIsIt == "var":
-            self.check_if_exists(type_, src, "TYPE")
+            self.check_if_exists(type_, src, "TYPE", True)
             src = type_[src]
         else:
             src = self.get_value(type_, src)
@@ -976,14 +982,14 @@ class Interpret:
 
         type_1, src1, whatIsIt = self.parse_symb(self.__instruction.arg2)
         if whatIsIt == "var":
-            self.check_if_exists(type_1, src1, "JUMPIFEQ")
+            self.check_if_exists(type_1, src1, "JUMPIFEQ", True)
             src1 = type_1[src1]
         else:
             src1 = self.get_value(type_1, src1)
         
         type_2, src2, whatIsIt = self.parse_symb(self.__instruction.arg3)
         if whatIsIt == "var":
-            self.check_if_exists(type_2, src2, "JUMPIFEQ")
+            self.check_if_exists(type_2, src2, "JUMPIFEQ", True)
             src2 = type_2[src2]
         else:
             src2 = self.get_value(type_2, src2)
@@ -1007,7 +1013,7 @@ class Interpret:
         type_, src, whatIsIt = self.parse_symb(self.__instruction.arg1)
 
         if whatIsIt == "var":
-            self.check_if_exists(type_, src, "EXIT")
+            self.check_if_exists(type_, src, "EXIT", True)
             source = type_[src]
         
         else:
@@ -1027,22 +1033,22 @@ class Interpret:
 
         frame, src = self.parse_var(self.__instruction.arg1)
 
-        self.check_if_exists(frame, src, "DPRINT")
+        self.check_if_exists(frame, src, "DPRINT", False)
 
-        sys.stderr.write(frame[src])
+        print(str(frame[src]), file=sys.stderr)
 
     def break_(self):
         argc = self.__instruction.argc()
         if argc != 0:
             self.print_error("Error, wrong arguments on BREAK instruction!\n", 32)
 
-        sys.stderr.write("DEBUG INFO:\n")
-        sys.stderr.write("order = " + str(self.__order) + "\n")
-        sys.stderr.write("GF = " + str(self.__gf) + "\n")
-        sys.stderr.write("LF = " + str(self.__lf) + "\n")
-        sys.stderr.write("TF = " + str(self.__tf) + "\n")
-        sys.stderr.write("dataStack = " + str(self.__dataStack.get_stack()) + "\n")
-        sys.stderr.write("callStack = " + str(self.__callStack.get_stack()) + " (These are order numbers, to which instruction will interpret RETURN)" + "\n\n")
+        print("DEBUG INFO:", file=sys.stderr)
+        print("order = " + str(self.__order), file=sys.stderr)
+        print("GF = " + str(self.__gf), file=sys.stderr)
+        print("LF = " + str(self.__lf), file=sys.stderr)
+        print("TF = " + str(self.__tf), file=sys.stderr)
+        print("dataStack = " + str(self.__dataStack.get_stack()), file=sys.stderr)
+        print("callStack = " + str(self.__callStack.get_stack()) + " (These are order numbers, to which instruction will interpret RETURN)", file=sys.stderr)
 
     """ STACK """
     def clears(self):
