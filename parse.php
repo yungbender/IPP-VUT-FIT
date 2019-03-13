@@ -1,4 +1,6 @@
 <?php
+    // Author: Tomáš Sasák
+    // for subject IPP on BUT FIT, 2019 
     // Abstract class used for enumeration of instructions
     abstract class Instructions
     {
@@ -66,7 +68,8 @@
                 fwrite(STDERR, "\n");
                 exit(10);
             }
-            $path = explode("=", $path[1]);
+            $path = array_pop($path);
+            $path = explode("=", $path);
             $path = $path[1];
             $this->file = $path;
             
