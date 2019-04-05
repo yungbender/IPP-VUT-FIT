@@ -1,4 +1,4 @@
-## Documentation of Project Implementation for IPP 2018/2019 </br> Name and surname: Tomáš Sasák </br> Login: xsasak01
+## Documentation of Project Implementation for IPP 2018/2019 - 1. task - parse.php</br> Name and surname: Tomáš Sasák </br> Login: xsasak01
 
 ### Functionality description
 `parse.php` is implemented using object oriented programming. There are few classes implemented, which communicates together to achieve the main goal, to parse IPPcode19 language into XML representation. List of implemented classes:

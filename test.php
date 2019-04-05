@@ -1,7 +1,12 @@
 <?php 
+    // test.php tool for testing interpret and parse
+    // Author: Tomáš Sasák
+    // BUT FIT 2019
 
+    // Represents tester as whole class
     Class Tester
     {
+        // Settings from command line
         protected $recursive = false;
         protected $directory = NULL;
         protected $parser = NULL;
@@ -11,10 +16,13 @@
         protected $files = NULL;
         protected $argc = 1;
         protected $parsedArgs = 1;
+
+        // Array of test results
         protected $resultsParse = [];
         protected $resultsInt = [];
         protected $resultsRetval = [];
 
+        // Method searches recursively folders by regex
         private function rsearch($folder, $pattern)
         {
             $dir = new RecursiveDirectoryIterator($folder);
@@ -31,11 +39,9 @@
             return $fileList;
         }
 
+        // Method parses arguments
         public function parse_args($args)
         {
-            #$test = $this->search(getcwd(),);
-            #print_r($test);
-            
             $this->argc = count($args);
 
             $help = preg_grep("/^--help$|^-h$/", $args);
@@ -206,6 +212,8 @@
             }
         }
         
+        // Method searches the tests and gets their realpath in list
+        // based on the --recursive flag
         public function fetch_tests()
         {
             if($this->recursive == true)
@@ -219,10 +227,76 @@
             }
         }
 
+        // Method runs a test based on every .src file in "files" variable
+        public function run_tests()
+        {
+            foreach($this->files as $i)
+            {
+                $i = substr($i, 0, -4);
+                $filename = $i . ".in";
+                $creator = fopen($filename, "a");
+                if($creator == false)
+                {
+                    exit(11);
+                }
+                fclose($creator);
+
+                $filename = $i . ".out";
+                $creator = fopen($filename, "a");
+                if($creator == false)
+                {
+                    exit(11);
+                }
+
+                fclose($creator);
+
+                $filename = $i . ".rc";
+                if(!is_file($filename))
+                {
+                    $creator = fopen($filename, "a");
+                    if($creator == false)
+                    {
+                        exit(12);
+                    }
+                    fwrite($creator, "0");
+                    fclose($creator);
+                }
+                
+                // Parse-only or both
+                if(!$this->intOnly or ($this->intOnly == $this->parseOnly))
+                {
+                    $command = "php7.3 " . $this->parser . "<" . $i . ".src" . ">" . $i . ".superdupermemexml";
+                    exec($command, $output, $retval);
+                    
+                    shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
+                    if($this->intOnly == $this->parseOnly && $retval == "0\n")
+                    {
+                        $command = "python3.6 " . $this->interpret . " --input=$i.in" . "<" . $i . ".superdupermemexml" . ">" . $i . ".superdupermemeint";
+                        exec($command, $output, $retval);
+                        
+                        shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
+                    }
+                    else if($this->intOnly == $this->parseOnly)
+                    {
+                        shell_exec("echo -n \"$retval\" > $i.superdupermemeint");
+                    }
+                }
+                // Int-only
+                else if(!$this->parseOnly)
+                {
+                    $command = "python3.6 " . $this->interpret . " --input=$i.in" . "<" . $i . ".src" . ">" . $i . ".superdupermemeint";
+                    exec($command, $output, $retval);
+
+                    shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
+                }
+            }
+            $this->compare_results();
+        }
+
+        // Method checks out the results of tests, based on temporary files
+        // and pushes true or false, based if test failed
         private function compare_results()
         {
-            $queue = 0;
-
             foreach($this->files as $i)
             {
                 $testname = substr($i, 0, -4);
@@ -272,66 +346,7 @@
             }
         }
 
-        public function run_tests()
-        {
-            foreach($this->files as $i)
-            {
-                $i = substr($i, 0, -4);
-                $filename = $i . ".in";
-                $creator = fopen($filename, "a");
-                if($creator == false)
-                {
-                    exit(11);
-                }
-                fclose($creator);
-
-                $filename = $i . ".out";
-                $creator = fopen($filename, "a");
-                if($creator == false)
-                {
-                    exit(11);
-                }
-
-                fclose($creator);
-
-                $filename = $i . ".rc";
-                if(!is_file($filename))
-                {
-                    $creator = fopen($filename, "a");
-                    if($creator == false)
-                    {
-                        exit(12);
-                    }
-                    fwrite($creator, "0");
-                    fclose($creator);
-                }
-
-                if(!$this->intOnly or ($this->intOnly == $this->parseOnly))
-                {
-                    $command = "php7.3 " . $this->parser . "<" . $i . ".src" . ">" . $i . ".superdupermemexml";
-                    exec($command, $output, $retval);
-                    
-                    shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
-                    if($this->intOnly == $this->parseOnly && $retval == "0\n")
-                    {
-                        $command = "python3.6 " . $this->interpret . " --input=$i.in" . "<" . $i . ".superdupermemexml" . ">" . $i . ".superdupermemeint";
-                        exec($command, $output, $retval);
-                        
-                        shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
-                    }
-                }
-
-                else if(!$this->parseOnly)
-                {
-                    $command = "python3.6 " . $this->interpret . " --input=$i.in" . "<" . $i . ".src" . ">" . $i . ".superdupermemeint";
-                    exec($command, $output, $retval);
-
-                    shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
-                }
-            }
-            $this->compare_results();
-        }
-
+        // Method prints out the HTML page based on results on STDOUT
         public function print_result()
         {
             date_default_timezone_set("Europe/Prague");
@@ -441,6 +456,8 @@
             print "<p style=\"text-align:center;width:100%;font-size:14px\">Passed tests: $passedTests out of $testsCount </p>";
         }
 
+        // Method prints out little hints, if interpret/parser
+        // was not found
         public function print_hints()
         {
             if(!is_file($this->parser) && !$this->intOnly)
@@ -455,6 +472,7 @@
             </html>";
         }
 
+        // Method cleans up all temporary files
         public function clean_up()
         {
             foreach($this->files as $i)
@@ -493,5 +511,5 @@
 
     $tester->print_hints();
 
-    #$tester->clean_up();
+    $tester->clean_up();
 ?>

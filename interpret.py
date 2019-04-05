@@ -1,14 +1,27 @@
+"""
+    Interpret for Principles of Programming Languages
+    Author: Tomáš Sasák
+    2019
+"""
 import sys, re
 import xml.etree.ElementTree as ET
 
 class Stats:
-    """ Represents statistics from interpretation. """
+    """
+        Class represents statistics from interpretation
+    """
     def __init__(self):
+        """ Instructions counter """
         self.__insts = 0
+        """ Variables counter """
         self.__vars = 0
+        """ True if stats were requested """
         self.__statsRequested = False
+        """ True if instructions stats were requested """
         self.__instsRequested = False
+        """ True if variables stats were requested """
         self.__varsRequested = False
+        """ Name of file where the statistics will be printed """
         self.__file = None
     
     def add_inst(self):
@@ -24,6 +37,8 @@ class Stats:
         self.__vars -= 1
     
     def args_stats(self, args):
+        """ Method parses arguments meant for statistics.
+        Returns number of parsed arguments. """
         argc = 0
 
         stats_re = re.compile(r"^--stats=.*$")
@@ -62,6 +77,8 @@ class Stats:
         return argc
 
     def print_results(self):
+        """ Method prints out the results of statistics to file 
+            if they were requested """
         if self.__statsRequested == False:
             return
 
@@ -82,10 +99,12 @@ class Stats:
         self.__file.close()
 
 class Nil:
+    """ Class represents Nil datatype """
     def __init__(self):
         self._nil = "nil"
 
 class Stack:
+    """ Class represents ADT stack and operations with it """
     
     def __init__(self):
         self.__stack = []
@@ -109,6 +128,7 @@ class Stack:
         return len(self.__stack)
 
 class Instruction:
+    """ Class represnts 1 instruction from XML file and its arguments """
     def __init__(self):
         self.opcode = None
         self.arg1 = []
@@ -117,6 +137,7 @@ class Instruction:
         self.order = 0
 
     def argc(self):
+        """ Method counts the number of argument of 1 instruction """
         count = 0
         if self.arg1:
             count += 1
@@ -128,6 +149,8 @@ class Instruction:
         return count
 
 class Interpret:
+    """ Class represents the Interpret, which preforms the instructions
+    from the XML file. """
     
     def __init__(self):
         """ Frames """
@@ -138,31 +161,38 @@ class Interpret:
 
         """ Data stack """
         self.__dataStack = None
+
+        """ Call stack, for CALL/RETURN instruction """
         self.__callStack = None
 
-        """ Labels """
+        """ Labels and their number of instruction (where they are) """
         self.__labels = {}
 
         """ I/O """
         self.__source = 0
         self.__input = "STDIN"
 
+        """ Current number of performed instruction
+            Like EIP register in CPU """
         self.__order = 0
 
+        """ Current instruction performed """
         self.__instruction = None
+
+        """ Number of instructions in whole XML file """
         self.__instrCount = 0
 
-        """ Statistics class """
+        """ Statistics object """
         self.__stats = None
 
 
-    """ Function prints out given error message and exits with given number. """
     def print_error(self, message, number):
+        """ Method prints out given error message and exits with given number. """
         print(message, file=sys.stderr, end="")
         sys.exit(number)
 
-    """ Function parses arguments from user, and checks if arguments are written correctly. """
     def parse_args(self):
+        """ Method parses arguments from user, and checks if arguments are written correctly. """
         argc = 1
         help_re = re.compile(r"^--help$")
         is_help = list(filter(help_re.search, sys.argv))
@@ -250,10 +280,13 @@ class Interpret:
             if int(order.get("order")) != (i + 1):
                 self.print_error("Error, opcodes does have not continous numbers!\n", 32)
             
-    """ lexer """
+    """ Lexer """
     def get_instruction(self):
+        """ Method gets next instruction from XML file 
+            Method returns 1 parsed instruction object """
         instr = Instruction()
 
+        """ EOF """
         if self.__order == self.__instrCount:
             instr.opcode = "EOF"
             self.__instruction = instr
@@ -265,8 +298,11 @@ class Interpret:
 
         instr.order = int(part.get("order"))
 
+        """ Parse arguments """
         arg1 = part.find("arg1")
         if arg1 != None:
+            if(len(part.findall("arg1")) != 1):
+                self.print_error("Error, wrong arg1!\n", 32)
             instr.arg1.append(arg1.get("type"))
             instr.arg1.append(arg1.text)
             if instr.arg1[1] == None:
@@ -274,26 +310,34 @@ class Interpret:
         
         arg2 = part.find("arg2")
         if arg2 != None:
+            if(len(part.findall("arg2")) != 1):
+                self.print_error("Error, wrong arg2!\n", 32)
             instr.arg2.append(arg2.get("type"))
             instr.arg2.append(arg2.text)
             if instr.arg2[1] == None:
                 instr.arg2[1] = ""
+
         if len(instr.arg1) == 0 and len(instr.arg2) != 0:
             self.print_error("Error, wrong arguments of function!\n", 32)
 
         arg3 = part.find("arg3")
         if arg3 != None:
+            if(len(part.findall("arg3")) != 1):
+                self.print_error("Error, wrong arg3!\n", 32)
             instr.arg3.append(arg3.get("type"))
             instr.arg3.append(arg3.text)
             if instr.arg3[1] == None:
                 instr.arg3[1] = ""
+
         if len(instr.arg2) == 0 and len(instr.arg3) != 0:
             self.print_error("Error, wrong arguments of function!\n", 32)
-
+        
         self.__order += 1
         self.__instruction = instr
 
     def get_labels(self):
+        """ Method checks the whole XML file and look up every LABEL instruction
+            and loads the labels in dictionary. """
         for instr in self.__source:
             opcode = instr.get("opcode")
             opcode = opcode.upper()
@@ -328,8 +372,12 @@ class Interpret:
                 self.__labels[labName] = opcode
 
     def parse_var(self, arg):
+        """ Method checks up, if the <var> parameter in instruction is correct
+            lexically, and checks if the variable exists, if exists, method
+            returns the refference to the frame where the <var> is and variable
+            name """
         if len(arg) != 2:
-            self.print_error("Error, expecting <var>!\n", 32)
+            self.print_error("Error, expecting <var>! Wrong structure!\n", 32)
 
         type_ = arg[0]
 
@@ -342,7 +390,7 @@ class Interpret:
         result = regex.search(var)
 
         if result == None:
-            self.print_error("Error, expencting <var>!\n", 32)
+            self.print_error("Error, expencting <var>! Lexically wrong!\n", 32)
 
         split = var.split("@", 1)
 
@@ -352,10 +400,20 @@ class Interpret:
             frame = self.__tf
         elif split[0] == "GF":
             frame = self.__gf
+        else:
+            self.print_error("Error, <var> unknown frame!\n")
 
         return frame, split[1]
 
     def parse_symb(self, arg):
+        """ Method checks up, if the <symb> parameter in instruction is correct
+            lexically, and checks what is it (variable or constant). If variable
+            instruction is sent into parse_var method. If constant, constant is parsed
+            and returned back. 
+            If variable, method returns, frame refference, its name
+            and "var" string which signifies it is variable. 
+            If constant, method returns datatype of constant, constant, "const" string
+            which signifies it is constant """
         if len(arg) != 2:
             self.print_error("Error, expecting <symb>!\n", 32)
 
@@ -376,6 +434,9 @@ class Interpret:
         return split[0], split[1], "const"
 
     def parse_label(self, arg):
+        """ Method checks up, if the <label> parameter in instruction is correct
+        lexically 
+        Method returns name of the label. """
         if len(arg) != 2:
             self.print_error("Error, expecting <label>!\n", 32)
         
@@ -390,6 +451,9 @@ class Interpret:
         return label
 
     def parse_type(self, arg):
+        """ Method checks up, if the <type> parameter in instruction is correct
+        leixcally
+        Method returns name of the datatype """
         if len(arg) != 2:
             self.print_error("Error, expecting <type>!\n", 32)
         
@@ -405,11 +469,14 @@ class Interpret:
         return arg[1]
 
     def get_value(self, type_, src):
+        """ Method translates the constant value, from string taken from XML file
+        to actual python datatype 
+        Method returns translated datatype """
         if type_ == "int":
             try:
                 value = int(src)
             except:
-                self.print_error("Error, constant has wrong data type!\n", 57)
+                self.print_error("Error, constant has wrong data type!\n", 53)
         elif type_ == "string":
             if src == None:
                 value = ""
@@ -423,7 +490,7 @@ class Interpret:
                 else:
                     value = False
             except:
-                self.print_error("Error, constant has wrong data type!\n", 57)
+                self.print_error("Error, constant has wrong data type!\n", 53)
         elif type_ == "nil":
             value = Nil()
         else:
@@ -432,6 +499,10 @@ class Interpret:
         return value
 
     def check_if_exists(self, frame, var, op, checkIfNone):
+        """ Method checks up, if the the given "var" variable, exists in the
+        given "frame" refference. "op" signifies current performed instruction
+        for easy error reporting. "checkIfNone" flag signifies the method, to check
+        if the given variable is unitialized (no interpreter data type). """
         if frame == None:
             self.print_error("Error, " + op + " destination variable frame is not initiliazed!\n", 55)
         elif not var in frame:
@@ -441,31 +512,32 @@ class Interpret:
                 self.print_error("Error, " + op + " variable is not initalized!\n", 56)
 
     def check_if_label_exists(self, label, op):
+        """ Method checks if the given "label" name is existing in label dictionary """
         if label not in self.__labels:
             self.print_error("Error, " + op + " label does not exist!\n", 52)
 
     def move(self):
+        """ Method emulates the "MOVE" insturction from IPPcode19 """
         argc = self.__instruction.argc()
         if argc != 2:
             self.print_error("Error, wrong arguments on MOVE instructions!\n", 32)
 
         frame, dest = self.parse_var(self.__instruction.arg1)
-
         self.check_if_exists(frame, dest, "MOVE", False)
 
         type_, src, whatIsIt = self.parse_symb(self.__instruction.arg2)
 
         if whatIsIt == "var":
             self.check_if_exists(type_, src, "MOVE", True)
-            
-            frame[dest] = type_[src]
+            src = type_[src]
 
         elif whatIsIt == "const":
-            value = self.get_value(type_, src)
-
-            frame[dest] = value
+            src = self.get_value(type_, src)
+        
+        frame[dest] = src
         
     def createframe(self):
+        """ Method emulates the "CREATEFRAME" instruction from IPPcode19 """
         argc = self.__instruction.argc()
         if argc != 0:
             self.print_error("Error, wrong arguments on CREATEFRAME instructions!\n", 32)
@@ -473,6 +545,7 @@ class Interpret:
         self.__tf = {}
 
     def pushframe(self):
+        """ Method emulates the "PUSHFRAME" instruction from IPPcode19 """
         argc = self.__instruction.argc()
         if argc != 0:
             self.print_error("Error, wrong arguments on PUSHFRAME instructions!\n", 32)
@@ -487,6 +560,7 @@ class Interpret:
         self.__tf = None
 
     def popframe(self):
+        """ Method emulates the "POPFRAME" instruction from IPPcode19 """
         argc = self.__instruction.argc()
         if argc != 0:
             self.print_error("Error, wrong arguments on POPFRAME instructions!\n", 32)
@@ -496,12 +570,13 @@ class Interpret:
         
         self.__tf = self.__lf
 
-        if not self.__frameStack.is_empty:
+        if not self.__frameStack.is_empty():
             self.__lf = self.__frameStack.pop()
         else:
             self.__lf = None
 
     def defvar(self):
+        """ Method emulates the "DEFVAR" instruction from IPPcode19 """
         argc = self.__instruction.argc()
         if argc != 1:
             self.print_error("Error, wrong arguments on DEFVAR instruction!\n", 32)
@@ -516,6 +591,7 @@ class Interpret:
         frame[dest] = None
         
     def call(self):
+        """ Method emulates the "CALL" instruction from IPPcode19 """
         argc = self.__instruction.argc()
         if argc != 1:
             self.print_error("Error, wrong arguments on CALL instruction!\n", 32)
@@ -524,13 +600,14 @@ class Interpret:
         
         if not labName in self.__labels:
             self.print_error("Error, CALL label does not exist!\n", 52)
-        
-        order = self.__labels[labName]
 
+        """ Push the number of order, where to return """
         self.__callStack.push(self.__order)
-        self.__order = order
+        """ Change the value of current performed instruction (EIP register) """
+        self.__order = self.__labels[labName]
 
     def return_(self):
+        """ Method emulates the "RETURN" instruction from IPPcode19 """
         argc = self.__instruction.argc()
         if argc != 0:
             self.print_error("Error, wrong arguments on RETURN instruction!\n", 32)
@@ -538,9 +615,11 @@ class Interpret:
         if self.__callStack.is_empty():
             self.print_error("Error, RETURN there is nowhere to return!\n", 56)
         
+        """ Restore order (EIP) """
         self.__order = self.__callStack.pop()
 
     def pushs(self):
+        """ Method emulates the "PUSHS" instruction from IPPcode19 """
         argc = self.__instruction.argc()
         if argc != 1:
             self.print_error("Error, wrong arguments on PUSHS instruction!\n", 32)
@@ -558,6 +637,7 @@ class Interpret:
             self.__dataStack.push(value)
 
     def pops(self):
+        """ Method emulates the "POPS" instruction from IPPcode19 """
         argc = self.__instruction.argc()
         if argc != 1:
             self.print_error("Error, wrong arguments on POPS instruction!\n", 32)
@@ -572,6 +652,7 @@ class Interpret:
         frame[dest] = self.__dataStack.pop()
 
     def arithmetic(self, op):
+        """ Method emulates the arithmetic instructions (ADD, SUB, MUL, IDIV) from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 3:
@@ -594,6 +675,9 @@ class Interpret:
         else:
             src2 = self.get_value(type_2, src2)
 
+        if type(src1) is not int or type(src2) is not int:
+            self.print_error("Error, " + op + " incorrect data types!\n", 53)
+
         try:
             if op == "ADD":
                 frame[dst] = src1 + src2
@@ -606,10 +690,9 @@ class Interpret:
 
         except ZeroDivisionError:
             self.print_error("Error, IDIV division by zero!\n", 57)
-        except:
-            self.print_error("Error, " + op + " incorrect data types!\n", 53)
 
     def compare(self, op):
+        """ Method emulates the comparision instructions (EQ, LT, GT) from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 3:
@@ -632,12 +715,15 @@ class Interpret:
         else:
             src2 = self.get_value(type_2, src2)
         
+        if type(src1) is Nil and type(src2) is not Nil and op == "EQ":
+            frame[dst] = False
+            return
+        elif type(src2) is Nil and type(src1) is not Nil and op == "EQ":
+            frame[dst] = False
+            return
         if type(src1) != type(src2):
             self.print_error("Error, " + op + " incorrect data types!\n", 53)
-        
-        if (type(src1) is Nil or type(src2) is Nil) and op != "EQ":
-            self.print_error("Error, " + op + " incorrect data types!\n", 53)
-        
+
         if op == "LT":
             frame[dst] = (src1 < src2)
         elif op == "GT":
@@ -650,6 +736,7 @@ class Interpret:
             frame[dst] = (src1 == src2)
 
     def logical(self, op):
+        """ Method emulates the logical instructions (NOT, AND, OR) from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 3 and op != "NOT":
@@ -666,6 +753,9 @@ class Interpret:
             src1 = type_1[src1]
         else:
             src1 = self.get_value(type_1, src1)
+
+        if type(src1) is not bool:
+            self.print_error("Error, " + op + "operand is not bool!\n", 53)
         
         if op != "NOT":
             type_2, src2, whatIsIt = self.parse_symb(self.__instruction.arg3)
@@ -675,7 +765,7 @@ class Interpret:
             else:
                 src2 = self.get_value(type_2, src2)
 
-            if type(src1) is not bool or type(src2) is not bool:
+            if type(src2) is not bool:
                 self.print_error("Error, " + op + "operand is not bool!\n", 53)
         
         if op == "AND":
@@ -686,6 +776,7 @@ class Interpret:
             frame[dst] = (not src1)
 
     def int2char(self):
+        """ Method emulates the "INT2CHAR" instruction from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 2:
@@ -697,21 +788,20 @@ class Interpret:
         type_, src, whatIsIt = self.parse_symb(self.__instruction.arg2)
         if whatIsIt == "var":
             self.check_if_exists(type_, src, "INT2CHAR", True)
-            try:
-                source = chr(type_[src])
-            except:
-                self.print_error("Error, INT2CHAR wrong value to change char to!\n.", 58)
-
+            src = type_[src]
         else:
             src = self.get_value(type_, src)
-            try:
-                source = chr(src)
-            except:
-                self.print_error("Error, INT2CHAR wrong value to change char to!\n.", 58)
+    
+        if type(src) is not int:
+            self.print_error("Error, INT2CHAR source value is not int!", 53)
 
-        frame[dst] = source
+        try:
+            frame[dst] = chr(src)
+        except:
+            self.print_error("Error, INT2CHAR wrong value to change char to!\n.", 58)
 
     def stri2int(self):
+        """ Method emulates the "STRI2INT" instruction from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 3:
@@ -728,7 +818,7 @@ class Interpret:
             src1 = self.get_value(type_1, src1)
 
         if type(src1) is not str:
-            self.print_error("Error, STRI2INT <symb1> is not string!\n", 57)
+            self.print_error("Error, STRI2INT <symb1> is not string!\n", 53)
 
         type_2, index, whatIsIt = self.parse_symb(self.__instruction.arg3)
         if whatIsIt == "var":
@@ -738,7 +828,7 @@ class Interpret:
             index = self.get_value(type_2, index)
 
         if type(index) is not int:
-            self.print_error("Error, STRI2INT <symb2> is not int(index)!\n", 57)
+            self.print_error("Error, STRI2INT <symb2> is not int(index)!\n", 53)
 
         if index >= len(src1) or index < 0:
             self.print_error("Error, STRI2INT index is out of range!\n", 58)
@@ -746,6 +836,7 @@ class Interpret:
         frame[dst] = ord(src1[index]) 
 
     def read(self):
+        """ Method emulates the "READ" instruction from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 2:
@@ -774,8 +865,8 @@ class Interpret:
             except:
                 value = ""
         elif dataType == "bool":
-            value = value.toupper()
-            if value is "TRUE":
+            value = value.upper()
+            if value == "TRUE":
                 value = True
             else:
                 value = False
@@ -783,9 +874,11 @@ class Interpret:
         frame[dst] = value
     
     def format_string(self, string):
+        """ Method checks the escape sequences, and translates them """
         return re.sub(r"\\(\d\d\d)", lambda x: chr(int(x.group(1), 10)), string)
 
     def write(self):
+        """ Method emulates the "WRITE" instruction from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 1:
@@ -804,10 +897,13 @@ class Interpret:
                 src = "true"
             else:
                 src = "false"
+        if type(src) is Nil:
+            src = ""
         
         print(str(src), end="")
 
     def concat(self):
+        """ Method emulates the "CONCAT" instruction from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 3:
@@ -836,6 +932,7 @@ class Interpret:
         frame[dst] = src1 + src2
 
     def strlen(self):
+        """ Method emulates the "STRLEN" instruction from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 2:
@@ -857,6 +954,7 @@ class Interpret:
         frame[dst] = len(src1)
 
     def getchar(self):
+        """ Method emulates the "GETCHAR" instruction from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 3:
@@ -873,7 +971,7 @@ class Interpret:
             src1 = self.get_value(type_1, src1)
 
         if type(src1) is not str:
-            self.print_error("Error, GETCHAR <symb1> is not string!\n", 57)
+            self.print_error("Error, GETCHAR <symb1> is not string!\n", 53)
 
         type_2, index, whatIsIt = self.parse_symb(self.__instruction.arg3)
         if whatIsIt == "var":
@@ -883,7 +981,7 @@ class Interpret:
             index = self.get_value(type_2, index)
 
         if type(index) is not int:
-            self.print_error("Error, GETCHAR <symb2> is not int(index)!\n", 57)
+            self.print_error("Error, GETCHAR <symb2> is not int(index)!\n", 53)
 
         if index >= len(src1) or index < 0:
             self.print_error("Error, GETCHAR index is out of range!\n", 58)
@@ -891,6 +989,7 @@ class Interpret:
         frame[dst] = src1[index]
 
     def setchar(self):
+        """ Method emulates the "SETCHAR" instruction from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 3:
@@ -900,7 +999,7 @@ class Interpret:
         self.check_if_exists(frame, dst, "SETCHAR", True)
 
         if type(frame[dst]) is not str:
-            self.print_error("Error, SETCHAR <var> is not string!\n", 57)
+            self.print_error("Error, SETCHAR <var> is not string!\n", 53)
 
         type_1, index, whatIsIt = self.parse_symb(self.__instruction.arg2)
         if whatIsIt == "var":
@@ -910,7 +1009,7 @@ class Interpret:
             index = self.get_value(type_1, index)
 
         if type(index) is not int:
-            self.print_error("Error, SETCHAR <symb1> is not int!\n", 57)
+            self.print_error("Error, SETCHAR <symb1> is not int!\n", 53)
 
         type_2, src, whatIsIt = self.parse_symb(self.__instruction.arg3)
         if whatIsIt == "var":
@@ -919,8 +1018,8 @@ class Interpret:
         else:
             src = self.get_value(type_2, src)
 
-        if type(index) is not int:
-            self.print_error("Error, SETCHAR <symb2> is not int(index)!\n", 57)
+        if type(src) is not str:
+            self.print_error("Error, SETCHAR <symb2> is not string!\n", 53)
 
         if index >= len(frame[dst]) or index < 0 or src == "":
             self.print_error("Error, SETCHAR index is out of range!\n", 58)
@@ -931,6 +1030,7 @@ class Interpret:
         frame[dst] = string
 
     def type_(self):
+        """ Method emulates the "TYPE" instruction from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 2:
@@ -941,11 +1041,11 @@ class Interpret:
 
         type_, src, whatIsIt = self.parse_symb(self.__instruction.arg2)
         if whatIsIt == "var":
-            self.check_if_exists(type_, src, "TYPE", True)
+            self.check_if_exists(type_, src, "TYPE", False)
             src = type_[src]
         else:
             src = self.get_value(type_, src)
-
+        
         if type(src) is int:
             frame[dst] = "int"
         elif type(src) is bool:
@@ -954,12 +1054,13 @@ class Interpret:
             frame[dst] = "string"
         elif type(src) is Nil:
             frame[dst] = "nil"
-        elif src is None:
+        elif src == "" or src is None:
             frame[dst] = ""
         else:
             self.print_error("Error, TYPE error.", 53)
 
     def jump(self):
+        """ Method emulates the "JUMP" instruction from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 1:
@@ -972,6 +1073,7 @@ class Interpret:
         self.__order = self.__labels[label]
 
     def jumpeq(self, type_):
+        """ Method emulates the "JUMPIFEQ/JUMPIFNEQ" instruction from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 3:
@@ -1005,6 +1107,7 @@ class Interpret:
                 self.__order = self.__labels[label]
 
     def exit_(self):
+        """ Method emulates the "EXIT" instruction from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 1:
@@ -1019,13 +1122,16 @@ class Interpret:
         else:
             source = self.get_value(type_, src)
 
-        if type(source) is not int or not source >= 0 or not source <= 49:
+        if type(source) is not int:
+            self.print_error("Error, EXIT wrong data type!\n", 53)
+        elif not source >= 0 or not source <= 49:
             self.print_error("Error, EXIT wrong exit number!\n", 57)
         
         self.__stats.print_results()
         sys.exit(source)
 
     def dprint(self):
+        """ Method emulates the "DPRINT" instruction from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 1:
@@ -1038,6 +1144,7 @@ class Interpret:
         print(str(frame[src]), file=sys.stderr)
 
     def break_(self):
+        """ Method emulates the "BREAK" instruction from IPPcode19 """
         argc = self.__instruction.argc()
         if argc != 0:
             self.print_error("Error, wrong arguments on BREAK instruction!\n", 32)
@@ -1049,9 +1156,11 @@ class Interpret:
         print("TF = " + str(self.__tf), file=sys.stderr)
         print("dataStack = " + str(self.__dataStack.get_stack()), file=sys.stderr)
         print("callStack = " + str(self.__callStack.get_stack()) + " (These are order numbers, to which instruction will interpret RETURN)", file=sys.stderr)
+        print("frameStack = " + str(self.__frameStack.get_stack()), file=sys.stderr)
 
-    """ STACK """
+    """ STACK instructions (STACKI) """
     def clears(self):
+        """ Method emulates the "CLEARS" instruction from IPPcode19 """
         argc = self.__instruction.argc()
         if argc != 0:
             self.print_error("Error, wrong arguments on CLEARS instruction!\n", 32)
@@ -1059,6 +1168,7 @@ class Interpret:
         self.__dataStack = Stack()
     
     def arithmetics(self, op):
+        """ Method emulates the arithmethic stack instructions (ADDS, SUBS, MULS, IDIVS) from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 0:
@@ -1086,6 +1196,7 @@ class Interpret:
             self.print_error("Error, IDIVS division by zero!\n", 57)
         
     def compares(self, op):
+        """ Method emulates the comparsion stack instructions (EQS, LTS, GTS) from IPPcode19 """
         argc = self.__instruction.argc()
 
         if argc != 0:
@@ -1096,6 +1207,13 @@ class Interpret:
         
         src2 = self.__dataStack.pop()
         src1 = self.__dataStack.pop()
+
+        if type(src1) is Nil and op == "EQS" and type(src2) is not Nil:
+            self.__dataStack.push(False)
+            return
+        elif type(src2) is Nil and op == "EQS" and type(src1) is not Nil:
+            self.__dataStack.push(False)
+            return
 
         if type(src1) is Nil and op != "EQS":
             self.print_error("Error, " + op + " wrong data type!\n", 53)
@@ -1116,6 +1234,7 @@ class Interpret:
             self.__dataStack.push((src1 == src2))
 
     def logicals(self, op):
+        """ Method emulates the logical instructions (ANDS, ORS, NOTS) from IPPcode19 """
         argc = self.__instruction.argc()
         if argc != 0:
             self.print_error("Error, wrong arguments on " + op + " instruction!\n", 32)
@@ -1143,6 +1262,7 @@ class Interpret:
             self.__dataStack.push(not src2)
 
     def int2chars(self):
+        """ Method emulates the "INT2CHARS" instruction from IPPcode19 """
         argc = self.__instruction.argc()
         if argc != 0:
             self.print_error("Error, wrong arguments on INT2CHARS instruction!\n", 32)
@@ -1161,6 +1281,7 @@ class Interpret:
             self.print_error("Error, INT2CHARS int is out of range!\n", 58)
     
     def stri2ints(self):
+        """ Method emulates the "STRI2INTS" instruction from IPPcode19 """
         argc = self.__instruction.argc()
         if argc != 0:
             self.print_error("Error, wrong arguments on STRI2INTS instruction!\n", 32)
@@ -1180,6 +1301,7 @@ class Interpret:
         self.__dataStack.push(ord(src[index]))
 
     def jumpeqs(self, op):
+        """ Method emulates the "JUMPIFEQS/JUMPIFNEQS" instruction from IPPcode19 """
         argc = self.__instruction.argc()
         if argc != 1:
             self.print_error("Error, wrong arguments on" + op + " instruction!\n", 32)
@@ -1204,6 +1326,8 @@ class Interpret:
                 self.__order = self.__labels[label]
 
     def execute(self):
+        """ Method launches the instruction execution based on the current loaded instruction
+            Instructions are executed until lexer hits EOF """
         self.get_instruction()
         while self.__instruction.opcode != "EOF":
 
@@ -1319,6 +1443,7 @@ class Interpret:
             
             self.get_instruction()
     
+    """ Method calls the stats method to print out the results of interpretation """
     def print_stats(self):
         self.__stats.print_results()
 
