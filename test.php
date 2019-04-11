@@ -265,29 +265,29 @@
                 // Parse-only or both
                 if(!$this->intOnly or ($this->intOnly == $this->parseOnly))
                 {
-                    $command = "php7.3 " . $this->parser . "<" . $i . ".src" . ">" . $i . ".superdupermemexml";
+                    $command = "php7.3 \"" . $this->parser . "\" <\"" . $i . ".src\"" . ">\"" . $i . ".superdupermemexml\"";
                     exec($command, $output, $retval);
                     
-                    shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
+                    shell_exec("echo -n \"$retval\" > \"$i.superdupermemeretval\"");
                     if($this->intOnly == $this->parseOnly && $retval == "0\n")
                     {
-                        $command = "python3.6 " . $this->interpret . " --input=$i.in" . "<" . $i . ".superdupermemexml" . ">" . $i . ".superdupermemeint";
+                        $command = "python3.6 \"" . $this->interpret . "\" \"--input=$i.in\"" . "<\"" . $i . ".superdupermemexml\"" . ">\"" . $i . ".superdupermemeint\"";
                         exec($command, $output, $retval);
                         
-                        shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
+                        shell_exec("echo -n \"$retval\" > \"$i.superdupermemeretval\"");
                     }
                     else if($this->intOnly == $this->parseOnly)
                     {
-                        shell_exec("echo -n \"$retval\" > $i.superdupermemeint");
+                        shell_exec("echo -n \"$retval\" > \"$i.superdupermemeint\"");
                     }
                 }
                 // Int-only
                 else if(!$this->parseOnly)
                 {
-                    $command = "python3.6 " . $this->interpret . " --input=$i.in" . "<" . $i . ".src" . ">" . $i . ".superdupermemeint";
+                    $command = "python3.6 \"" . $this->interpret . "\" \"--input=$i.in\"" . "<\"" . $i . ".src\"" . ">\"" . $i . ".superdupermemeint\"";
                     exec($command, $output, $retval);
 
-                    shell_exec("echo -n \"$retval\" > $i.superdupermemeretval");
+                    shell_exec("echo -n \"$retval\" > \"$i.superdupermemeretval\"");
                 }
             }
             $this->compare_results();
@@ -301,7 +301,7 @@
             {
                 $testname = substr($i, 0, -4);
 
-                exec("diff -b $testname.rc $testname.superdupermemeretval", $output, $diff);
+                exec("diff -b \"$testname.rc\" \"$testname.superdupermemeretval\"", $output, $diff);
                 if($diff == "0\n")
                 {
                     array_push($this->resultsRetval, "true");
@@ -313,7 +313,7 @@
 
                 if(!$this->parseOnly or ($this->parseOnly == $this->intOnly))
                 {
-                    exec("diff -b $testname.out $testname.superdupermemeint", $output, $diff);
+                    exec("diff -b \"$testname.out\" \"$testname.superdupermemeint\"", $output, $diff);
                     if($diff == "0\n")
                     {
                         array_push($this->resultsInt, "true");
@@ -326,7 +326,7 @@
 
                 else
                 {
-                    exec("java -jar /pub/courses/ipp/jexamxml/jexamxml.jar $testname.out $testname.superdupermemexml /dev/null  /D /pub/courses/ipp/jexamxml/options", $output, $diff);
+                    exec("java -jar /pub/courses/ipp/jexamxml/jexamxml.jar \"$testname.out\" \"$testname.superdupermemexml\" /dev/null  /D /pub/courses/ipp/jexamxml/options", $output, $diff);
                     if($diff == "0\n")
                     {
                         array_push($this->resultsParse, "true");
@@ -481,20 +481,20 @@
 
                 if(is_file("$filename.superdupermemeint"))
                 {
-                    exec("rm $filename.superdupermemeint");
+                    exec("rm \"$filename.superdupermemeint\"");
                 }
 
                 if(is_file("$filename.superdupermemexml"))
                 {
-                    exec("rm $filename.superdupermemexml");
+                    exec("rm \"$filename.superdupermemexml\"");
                 }
 
 		        if(is_file("$filename.out.log"))
 		        {
-		            exec("rm $filename.out.log");
+		            exec("rm \"$filename.out.log\"");
 		        }
                  
-                exec("rm $filename.superdupermemeretval");
+                exec("rm \"$filename.superdupermemeretval\"");
             }
         }
     }

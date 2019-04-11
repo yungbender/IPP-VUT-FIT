@@ -428,7 +428,27 @@ class Interpret:
 
         if result == None:
             self.print_error("Error, expecting <symb>!\n", 32)
-        
+
+        regex = re.compile(r"^string@.*")
+        isString = regex.search(symb)
+
+        """ Incorrect characters in string """
+        if result != None:
+            regex = re.compile(r"[#\s]")
+            result = regex.search(symb)
+            if result != None:
+                self.print_error("Error, wrong characters in string!\n", 32)
+            
+            regex = re.compile(r"\\")
+            result = regex.search(symb)
+
+            if result != None:
+                regex = re.compile(r"\\[0-9]{3}")
+                result = regex.search(symb)
+
+                if result == None:
+                    self.print_error("Error, wrong characters in string!\n", 32)
+
         split = symb.split("@", 1)
         
         return split[0], split[1], "const"
