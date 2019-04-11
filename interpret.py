@@ -588,7 +588,13 @@ class Interpret:
         if self.__lf == None:
             self.print_error("Error, no frame to pop!\n", 55)
         
+        if self.__tf is not None:
+            for var, value in self.__tf.items():
+                if value is not None:
+                    self.__stats.add_var()
+
         self.__tf = self.__lf
+
 
         if not self.__frameStack.is_empty():
             self.__lf = self.__frameStack.pop()
@@ -1362,7 +1368,6 @@ class Interpret:
             elif self.__instruction.opcode == "POPFRAME":
                 self.popframe()
             elif self.__instruction.opcode == "DEFVAR":
-                self.__stats.add_var()
                 self.defvar()
             elif self.__instruction.opcode == "CALL":
                 self.call()
@@ -1463,9 +1468,34 @@ class Interpret:
             
             self.get_instruction()
     
-    """ Method calls the stats method to print out the results of interpretation """
     def print_stats(self):
+        """ Method calls the stats method to print out the results of interpretation """
         self.__stats.print_results()
+    
+    def count_vars(self):
+        """ Method calculates all initialized variables for STATI. """
+        if self.__gf is not None:
+            for var, value in self.__gf.items():
+                if var is not None:
+                    self.__stats.add_var()
+
+        if self.__lf is not None:
+            for var, value in self.__lf.items():
+                if value is not None:
+                    self.__stats.add_var()
+        
+        if self.__tf is not None:
+            for var, value in self.__tf.items():
+                if value is not None:
+                    self.__stats.add_var()
+        
+        frames = self.__frameStack.get_stack()
+
+        for frame in frames:
+            if frame is not None:
+                for var, value in frame.items():
+                    if value is not None:
+                        self.__stats.add_var()
 
         
 interpret = Interpret()
@@ -1475,4 +1505,5 @@ interpret.set_up()
 interpret.check_xml()
 interpret.get_labels()
 interpret.execute()
+interpret.count_vars()
 interpret.print_stats()
